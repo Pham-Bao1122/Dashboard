@@ -1,21 +1,26 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { LayoutWrapper } from '@/components/layout/layout-wrapper'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Trash2, Plus, Wifi, WifiOff } from 'lucide-react'
-import { useFirebaseData } from '@/components/hooks/use-firebase-data' // Lưu ý check lại đường dẫn hook này nhé
+import { useFirebaseData } from '@/components/hooks/use-firebase-data' 
 import { toast } from 'sonner'
 
-// 1. CẬP NHẬT INTERFACE THÊM TẦNG & PHÒNG
 interface NodeInfo {
   id: string
   name: string
   floor: string
   room: string
 }
+
+// ==========================================
+// BIẾN TOÀN CỤC: BẢO VỆ NHỊP TIM KHỎI BỊ RESET
+// ==========================================
+let globalHeartbeatTime = 0;
+let globalPacketId = -1;
 
 export default function NodeManagementPage() {
   const { data } = useFirebaseData() 
@@ -33,7 +38,6 @@ export default function NodeManagementPage() {
     if (savedNodes) {
       setNodes(JSON.parse(savedNodes))
     } else {
-      // Dữ liệu mẫu chuẩn cấu trúc mới
       setNodes([{ id: 'node-001', name: 'Trạm trung tâm', floor: 'Tầng 1', room: 'Phòng khách' }])
     }
     setMounted(true)
@@ -45,9 +49,6 @@ export default function NodeManagementPage() {
     }
   }, [nodes, mounted])
 
-  // ==========================================
-  // HÀM XỬ LÝ THÊM NODE CÓ CHỌN TẦNG/PHÒNG
-  // ==========================================
   const handleAddNode = () => {
     const id = window.prompt('Nhập Mã ID thiết bị (VD: node-001 để kết nối lại mạch thật):')
     if (!id) return 
@@ -58,8 +59,6 @@ export default function NodeManagementPage() {
     }
 
     const name = window.prompt('Nhập tên Node (VD: Cảm biến nhiệt độ):') || 'Trạm cảm biến mới'
-    
-    // Tách riêng hỏi Tầng và Phòng
     const floor = window.prompt('Nhập Tầng (VD: Tầng 1, Tầng 2, Sân vườn):') || 'Tầng 1'
     const room = window.prompt('Nhập Phòng (VD: Phòng khách, Phòng ngủ):') || 'Phòng khách'
     
@@ -77,23 +76,53 @@ export default function NodeManagementPage() {
   }
 
   // ==========================================
-  // LOGIC ONLINE / OFFLINE (GIỮ NGUYÊN)
+  // LOGIC ONLINE / OFFLINE (SIÊU BỀN VỮNG)
   // ==========================================
   const loraActive = data?.LORA_ACTIVATE === 1
   const currentPacketId = data?.packet_id || 0
 
-  const [lastUpdateTime, setLastUpdateTime] = useState(Date.now())
-  const [prevPacketId, setPrevPacketId] = useState(currentPacketId)
+  const [lastUpdateTime, setLastUpdateTime] = useState(globalHeartbeatTime)
+  const isInitialized = useRef(false) // Đánh dấu để phân biệt F5 và Nhịp tim mới
 
   useEffect(() => {
-    if (currentPacketId !== prevPacketId) {
-      setLastUpdateTime(Date.now())
-      setPrevPacketId(currentPacketId)
+    if (!data) return 
+
+    // 1. KHI VỪA MỞ TRANG (F5) HOẶC CHUYỂN TAB VỀ
+    if (!isInitialized.current) {
+      isInitialized.current = true
+
+      // Nếu là lần đầu mở web (F5), biến toàn cục chưa có dữ liệu
+      if (globalPacketId === -1) {
+        // Soi thẳng vào lịch sử của Firebase xem nó ngỏm lâu chưa
+        const fbTime = data.timestamp ? new Date(data.timestamp).getTime() : 0
+        if (Date.now() - fbTime > 15000) {
+          globalHeartbeatTime = 0 // Đã ngỏm trên 15 giây -> Khóa Offline
+        } else {
+          globalHeartbeatTime = Date.now() // Vừa hoạt động -> Cho Online
+        }
+        globalPacketId = currentPacketId
+        setLastUpdateTime(globalHeartbeatTime)
+      } 
+      // Nếu là do chuyển Tab, biến toàn cục vẫn còn giữ nhịp tim cũ
+      else {
+        setLastUpdateTime(globalHeartbeatTime) // Phục hồi đúng nguyên trạng
+      }
+      return
     }
-  }, [currentPacketId, prevPacketId])
+
+    // 2. KHI MẠCH ESP32 THỰC SỰ BẮN DỮ LIỆU LÊN
+    if (currentPacketId !== globalPacketId) {
+      const now = Date.now()
+      globalHeartbeatTime = now
+      globalPacketId = currentPacketId
+      setLastUpdateTime(now)
+    }
+  }, [data, currentPacketId])
 
   const timeSinceLastUpdate = currentTime - lastUpdateTime
-  const isOnline = loraActive && (timeSinceLastUpdate < 10000)
+  
+  // NODE ONLINE KHI: LoRa hoạt động + Có nhịp tim khác 0 + Chưa quá 10 giây
+  const isOnline = loraActive && lastUpdateTime !== 0 && (timeSinceLastUpdate < 10000)
   
   const lastSeenText = isOnline ? 'Vừa xong' : 'Mất kết nối'
   const signalStrength = isOnline ? Math.floor(Math.random() * 15) + 85 : 0 
@@ -127,7 +156,6 @@ export default function NodeManagementPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Node Name</th>
-                    {/* Đổi cột Location thành Tầng / Phòng */}
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Khu vực</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Status</th>
                     <th className="text-left py-3 px-4 font-semibold text-foreground">Signal</th>
@@ -151,7 +179,6 @@ export default function NodeManagementPage() {
                           </p>
                           <p className="text-xs text-muted-foreground">{node.id}</p>
                         </td>
-                        {/* Hiển thị Tầng và Phòng */}
                         <td className="py-4 px-4">
                           <span className="font-medium text-indigo-600 dark:text-indigo-400">{node.floor}</span>
                           <span className="text-muted-foreground"> / {node.room}</span>
