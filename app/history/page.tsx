@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { LayoutWrapper } from '@/components/layout/layout-wrapper'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { useFirebaseData } from '@/hooks/use-firebase-data' // Đường dẫn hook của huynh đệ
+import { useFirebaseData } from '@/components/hooks/use-firebase-data' // Đường dẫn hook của huynh đệ
 import { Thermometer, Droplets, Sun, AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 
 // Dữ liệu mồi ban đầu (để web luôn có biểu đồ đẹp ngay cả khi chưa đủ 7 ngày thật)
