@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Lock, User } from 'lucide-react'
 import { toast } from 'sonner'
 
+// LINK FIREBASE CỦA HUYNH ĐỆ
+const FIREBASE_AUTH_URL = "https://dht11-4de0f-default-rtdb.firebaseio.com/admin/auth.json"
+
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -18,32 +21,38 @@ export default function LoginPage() {
     setCredentials({ ...credentials, [e.target.name]: e.target.value })
   }
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Đổi thành hàm async để gọi lên Firebase
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    setTimeout(() => {
-      setIsLoading(false)
-      
-      const savedUsername = localStorage.getItem('iot_username') || 'admin'
-      const savedPassword = localStorage.getItem('iot_password') || '123456'
+    try {
+      // 1. Tải tài khoản/mật khẩu mới nhất từ Firebase về
+      const response = await fetch(FIREBASE_AUTH_URL)
+      const data = await response.json()
 
-      if (credentials.username === savedUsername && credentials.password === savedPassword) {
-        // ĐÃ SỬA: Đồng bộ tên vé (is_logged_in) khớp với trạm gác LayoutWrapper
+      // Nếu trên Firebase chưa có dữ liệu, dùng mặc định là admin / 123456
+      const realUsername = data?.username || 'admin'
+      const realPassword = data?.password || '123456'
+
+      // 2. So sánh dữ liệu người dùng nhập
+      if (credentials.username === realUsername && credentials.password === realPassword) {
         localStorage.setItem('is_logged_in', 'true') 
-        
         toast.success('Đăng nhập thành công!')
-        router.push('/') // Đá thẳng vào trang chủ Dashboard
+        router.push('/') 
       } else {
         toast.error('Sai tên đăng nhập hoặc mật khẩu!')
       }
-    }, 1000)
+    } catch (error) {
+      toast.error('Lỗi kết nối đến máy chủ Firebase!')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
-        
         <CardHeader className="space-y-1 text-center pb-6">
           <CardTitle className="text-3xl font-bold tracking-tight">IoT Monitor</CardTitle>
           <CardDescription className="text-base">
@@ -53,7 +62,6 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
-            
             <div className="space-y-2">
               <Label htmlFor="username">Tên đăng nhập</Label>
               <div className="relative">
@@ -88,7 +96,6 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-
           </CardContent>
 
           <CardFooter className="pt-4">
@@ -97,7 +104,6 @@ export default function LoginPage() {
             </Button>
           </CardFooter>
         </form>
-
       </Card>
     </div>
   )

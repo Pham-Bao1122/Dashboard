@@ -9,8 +9,14 @@ import { Button } from '@/components/ui/button'
 import { User, Mail, Phone, MapPin, Camera, Save, Key, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 
+// LINK FIREBASE ĐỂ LƯU DỮ LIỆU
+const FB_PROFILE_URL = "https://dht11-4de0f-default-rtdb.firebaseio.com/admin/profile.json"
+const FB_AUTH_URL = "https://dht11-4de0f-default-rtdb.firebaseio.com/admin/auth.json"
+
 export default function ProfilePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  
   const [profile, setProfile] = useState({
     fullName: 'Admin Hệ Thống',
     role: 'Kỹ sư Điện tử Viễn thông',
@@ -27,18 +33,28 @@ export default function ProfilePage() {
     confirmPassword: ''
   })
 
-  // 1. TỰ ĐỘNG TẢI DỮ LIỆU ĐÃ LƯU KHI MỞ TRANG
+  // 1. TẢI DỮ LIỆU TỪ FIREBASE KHI MỞ TRANG
   useEffect(() => {
-    // Tải Profile
-    const savedProfile = localStorage.getItem('iot_user_profile')
-    if (savedProfile) {
-      setProfile(JSON.parse(savedProfile))
+    const fetchData = async () => {
+      try {
+        // Tải Profile
+        const resProfile = await fetch(FB_PROFILE_URL)
+        const dataProfile = await resProfile.json()
+        if (dataProfile) setProfile(dataProfile)
+
+        // Tải Username
+        const resAuth = await fetch(FB_AUTH_URL)
+        const dataAuth = await resAuth.json()
+        if (dataAuth?.username) {
+          setCredentials(prev => ({ ...prev, username: dataAuth.username }))
+        }
+      } catch (e) {
+        console.error("Lỗi tải dữ liệu", e)
+      } finally {
+        setIsMounted(true)
+      }
     }
-    // Tải Username
-    const savedUsername = localStorage.getItem('iot_username')
-    if (savedUsername) {
-      setCredentials(prev => ({ ...prev, username: savedUsername }))
-    }
+    fetchData()
   }, [])
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,52 +65,70 @@ export default function ProfilePage() {
     setCredentials({ ...credentials, [e.target.name]: e.target.value })
   }
 
-  // 2. LƯU PROFILE VÀO TRÌNH DUYỆT
-  const handleSaveProfile = () => {
+  // 2. LƯU THÔNG TIN CÁ NHÂN LÊN FIREBASE
+  const handleSaveProfile = async () => {
     setIsSavingProfile(true)
-    
-    // Lưu vĩnh viễn vào localStorage
-    localStorage.setItem('iot_user_profile', JSON.stringify(profile))
-    
-    setTimeout(() => {
+    try {
+      await fetch(FB_PROFILE_URL, {
+        method: 'PUT', // Lệnh đè dữ liệu mới lên
+        body: JSON.stringify(profile)
+      })
+      toast.success('Đã đồng bộ hồ sơ lên Cloud!')
+    } catch (e) {
+      toast.error('Lỗi lưu trữ!')
+    } finally {
       setIsSavingProfile(false)
-      toast.success('Đã cập nhật hồ sơ thành công!')
-    }, 1000)
+    }
   }
 
-  const handleUpdateAuth = () => {
-    const savedPassword = localStorage.getItem('iot_password') || '123456'
-
-    if (credentials.currentPassword !== savedPassword) {
-      toast.error('Mật khẩu hiện tại không đúng!')
-      return 
-    }
-
-    if (credentials.newPassword) {
-      if (credentials.newPassword !== credentials.confirmPassword) {
-        toast.error('Mật khẩu mới không khớp!')
-        return
-      }
-      if (credentials.newPassword.length < 6) {
-        toast.error('Mật khẩu phải có ít nhất 6 ký tự!')
-        return
-      }
-    }
-
+  // 3. ĐỔI MẬT KHẨU LÊN FIREBASE
+  const handleUpdateAuth = async () => {
     setIsUpdatingAuth(true)
-    setTimeout(() => {
-      setIsUpdatingAuth(false)
-      
-      localStorage.setItem('iot_username', credentials.username)
-      
-      if (credentials.newPassword) {
-        localStorage.setItem('iot_password', credentials.newPassword)
+    try {
+      // Tải mật khẩu hiện tại từ đám mây xuống để check
+      const resAuth = await fetch(FB_AUTH_URL)
+      const dataAuth = await resAuth.json()
+      const realPassword = dataAuth?.password || '123456'
+
+      if (credentials.currentPassword !== realPassword) {
+        toast.error('Mật khẩu hiện tại không đúng!')
+        setIsUpdatingAuth(false)
+        return 
       }
+
+      if (credentials.newPassword) {
+        if (credentials.newPassword !== credentials.confirmPassword) {
+          toast.error('Mật khẩu mới không khớp!')
+          setIsUpdatingAuth(false)
+          return
+        }
+        if (credentials.newPassword.length < 6) {
+          toast.error('Mật khẩu phải có ít nhất 6 ký tự!')
+          setIsUpdatingAuth(false)
+          return
+        }
+      }
+
+      // Đẩy tài khoản/mật khẩu mới lên đám mây
+      const newPasswordToSave = credentials.newPassword || realPassword
+      await fetch(FB_AUTH_URL, {
+        method: 'PUT',
+        body: JSON.stringify({
+          username: credentials.username,
+          password: newPasswordToSave
+        })
+      })
 
       setCredentials({ ...credentials, currentPassword: '', newPassword: '', confirmPassword: '' })
-      toast.success('Đã cập nhật tài khoản và bảo mật thành công!')
-    }, 1000)
+      toast.success('Đã cập nhật tài khoản và bảo mật lên Cloud!')
+    } catch (e) {
+      toast.error('Lỗi cập nhật bảo mật!')
+    } finally {
+      setIsUpdatingAuth(false)
+    }
   }
+
+  if (!isMounted) return null
 
   return (
     <LayoutWrapper>
@@ -102,7 +136,7 @@ export default function ProfilePage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Profile & Security</h1>
           <p className="text-muted-foreground">
-            Quản lý hồ sơ cá nhân và thông tin đăng nhập hệ thống.
+            Đồng bộ hồ sơ cá nhân và thông tin đăng nhập trên hệ thống Cloud.
           </p>
         </div>
 
@@ -147,7 +181,6 @@ export default function ProfilePage() {
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      {/* ĐÃ XÓA DISABLED ĐỂ CÓ THỂ CHỈNH SỬA EMAIL */}
                       <Input id="email" name="email" value={profile.email} onChange={handleProfileChange} className="pl-9" />
                     </div>
                   </div>
@@ -169,7 +202,7 @@ export default function ProfilePage() {
                 <div className="flex justify-end pt-4 border-t border-border mt-4">
                   <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="flex gap-2">
                     <Save className="w-4 h-4" />
-                    {isSavingProfile ? 'Saving...' : 'Save Profile'}
+                    {isSavingProfile ? 'Saving...' : 'Sync Profile'}
                   </Button>
                 </div>
               </CardContent>
@@ -251,7 +284,7 @@ export default function ProfilePage() {
                 <div className="flex justify-end pt-4 border-t border-border mt-4">
                   <Button onClick={handleUpdateAuth} disabled={isUpdatingAuth} className="flex gap-2">
                     <Save className="w-4 h-4" />
-                    {isUpdatingAuth ? 'Updating...' : 'Update Security'}
+                    {isUpdatingAuth ? 'Updating...' : 'Sync Security'}
                   </Button>
                 </div>
               </CardContent>
