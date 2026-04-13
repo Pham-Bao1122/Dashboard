@@ -10,7 +10,6 @@ import { User, Mail, Phone, MapPin, Camera, Save, Key, Lock } from 'lucide-react
 import { toast } from 'sonner'
 
 export default function ProfilePage() {
-  // 1. Trạng thái Thông tin cá nhân
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [profile, setProfile] = useState({
     fullName: 'Admin Hệ Thống',
@@ -20,7 +19,6 @@ export default function ProfilePage() {
     location: 'Hồ Chí Minh, Việt Nam',
   })
 
-  // 2. Trạng thái Tài khoản & Mật khẩu
   const [isUpdatingAuth, setIsUpdatingAuth] = useState(false)
   const [credentials, setCredentials] = useState({
     username: 'admin',
@@ -29,7 +27,20 @@ export default function ProfilePage() {
     confirmPassword: ''
   })
 
-  // Hàm xử lý đổi dữ liệu
+  // 1. TỰ ĐỘNG TẢI DỮ LIỆU ĐÃ LƯU KHI MỞ TRANG
+  useEffect(() => {
+    // Tải Profile
+    const savedProfile = localStorage.getItem('iot_user_profile')
+    if (savedProfile) {
+      setProfile(JSON.parse(savedProfile))
+    }
+    // Tải Username
+    const savedUsername = localStorage.getItem('iot_username')
+    if (savedUsername) {
+      setCredentials(prev => ({ ...prev, username: savedUsername }))
+    }
+  }, [])
+
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value })
   }
@@ -38,36 +49,27 @@ export default function ProfilePage() {
     setCredentials({ ...credentials, [e.target.name]: e.target.value })
   }
 
-  // Hàm Lưu Thông tin cá nhân
+  // 2. LƯU PROFILE VÀO TRÌNH DUYỆT
   const handleSaveProfile = () => {
     setIsSavingProfile(true)
+    
+    // Lưu vĩnh viễn vào localStorage
+    localStorage.setItem('iot_user_profile', JSON.stringify(profile))
+    
     setTimeout(() => {
       setIsSavingProfile(false)
       toast.success('Đã cập nhật hồ sơ thành công!')
     }, 1000)
   }
 
-// Tự động tải tên đăng nhập đã lưu khi mở trang Profile
-  useEffect(() => {
-    const savedUsername = localStorage.getItem('iot_username')
-    if (savedUsername) {
-      setCredentials(prev => ({ ...prev, username: savedUsername }))
-    }
-  }, [])
-
-  // Hàm Lưu Tài khoản & Mật khẩu
-// Hàm Lưu Tài khoản & Mật khẩu
   const handleUpdateAuth = () => {
-    // 1. Lấy mật khẩu thật đang lưu trong hệ thống (mặc định là 123456)
     const savedPassword = localStorage.getItem('iot_password') || '123456'
 
-    // 2. BẮT BUỘC: Kiểm tra mật khẩu hiện tại có nhập đúng không
     if (credentials.currentPassword !== savedPassword) {
       toast.error('Mật khẩu hiện tại không đúng!')
-      return // Dừng ngay lập tức, không cho chạy tiếp
+      return 
     }
 
-    // 3. Nếu người dùng muốn đổi mật khẩu mới, kiểm tra tính hợp lệ
     if (credentials.newPassword) {
       if (credentials.newPassword !== credentials.confirmPassword) {
         toast.error('Mật khẩu mới không khớp!')
@@ -83,15 +85,12 @@ export default function ProfilePage() {
     setTimeout(() => {
       setIsUpdatingAuth(false)
       
-      // LƯU DỮ LIỆU VÀO BỘ NHỚ TRÌNH DUYỆT
       localStorage.setItem('iot_username', credentials.username)
       
-      // Chỉ cập nhật mật khẩu mới nếu người dùng có nhập
       if (credentials.newPassword) {
         localStorage.setItem('iot_password', credentials.newPassword)
       }
 
-      // Xóa rỗng các ô mật khẩu trên giao diện sau khi lưu thành công
       setCredentials({ ...credentials, currentPassword: '', newPassword: '', confirmPassword: '' })
       toast.success('Đã cập nhật tài khoản và bảo mật thành công!')
     }, 1000)
@@ -108,8 +107,6 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* CỘT TRÁI: Ảnh đại diện & Tóm tắt */}
           <Card className="md:col-span-1 h-fit">
             <CardContent className="pt-6 flex flex-col items-center text-center space-y-4">
               <div className="relative">
@@ -127,10 +124,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* CỘT PHẢI: Chứa 2 khung thông tin */}
           <div className="md:col-span-2 space-y-6">
-            
-            {/* Khung 1: Thông tin cá nhân */}
             <Card>
               <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
@@ -153,7 +147,8 @@ export default function ProfilePage() {
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="email" value={profile.email} disabled className="pl-9 bg-muted/50 cursor-not-allowed" />
+                      {/* ĐÃ XÓA DISABLED ĐỂ CÓ THỂ CHỈNH SỬA EMAIL */}
+                      <Input id="email" name="email" value={profile.email} onChange={handleProfileChange} className="pl-9" />
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -180,7 +175,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Khung 2: Tài khoản & Mật khẩu */}
             <Card>
               <CardHeader>
                 <CardTitle>Account Security</CardTitle>
@@ -188,8 +182,6 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  
-                  {/* Tên đăng nhập */}
                   <div className="space-y-2">
                     <Label htmlFor="username">Username (Tên đăng nhập)</Label>
                     <div className="relative max-w-md">
@@ -205,7 +197,6 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
-                    {/* Mật khẩu hiện tại */}
                     <div className="space-y-2">
                       <Label htmlFor="currentPassword">Mật khẩu hiện tại</Label>
                       <div className="relative">
@@ -221,10 +212,8 @@ export default function ProfilePage() {
                         />
                       </div>
                     </div>
-                    {/* Ô trống để căn dòng (UI trick) */}
                     <div className="hidden md:block"></div>
 
-                    {/* Mật khẩu mới */}
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">Mật khẩu mới</Label>
                       <div className="relative">
@@ -241,7 +230,6 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    {/* Xác nhận mật khẩu mới */}
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
                       <div className="relative">

@@ -18,22 +18,22 @@ export default function LoginPage() {
     setCredentials({ ...credentials, [e.target.name]: e.target.value })
   }
 
-const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     setTimeout(() => {
       setIsLoading(false)
       
-      // 1. Lấy thông tin từ bộ nhớ (nếu chưa đổi bao giờ thì mặc định là admin/123456)
       const savedUsername = localStorage.getItem('iot_username') || 'admin'
       const savedPassword = localStorage.getItem('iot_password') || '123456'
 
-      // 2. Kiểm tra xem người dùng nhập có đúng với cái đã lưu không
       if (credentials.username === savedUsername && credentials.password === savedPassword) {
-        localStorage.setItem('isLoggedIn', 'true') // Đánh dấu là đã đăng nhập
+        // ĐÃ SỬA: Đồng bộ tên vé (is_logged_in) khớp với trạm gác LayoutWrapper
+        localStorage.setItem('is_logged_in', 'true') 
+        
         toast.success('Đăng nhập thành công!')
-        router.push('/')
+        router.push('/') // Đá thẳng vào trang chủ Dashboard
       } else {
         toast.error('Sai tên đăng nhập hoặc mật khẩu!')
       }
@@ -41,7 +41,6 @@ const handleLogin = (e: React.FormEvent) => {
   }
 
   return (
-    // min-h-screen giúp trang web phủ kín màn hình, flex căn giữa mọi thứ
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-lg">
         
@@ -55,7 +54,6 @@ const handleLogin = (e: React.FormEvent) => {
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
             
-            {/* Tên đăng nhập */}
             <div className="space-y-2">
               <Label htmlFor="username">Tên đăng nhập</Label>
               <div className="relative">
@@ -72,7 +70,6 @@ const handleLogin = (e: React.FormEvent) => {
               </div>
             </div>
 
-            {/* Mật khẩu */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Mật khẩu</Label>
