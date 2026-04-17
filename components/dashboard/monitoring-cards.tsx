@@ -3,36 +3,39 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Thermometer, Droplets, Sun } from 'lucide-react'
 
-// (Giữ nguyên Interface của huynh đệ)
+// ==========================================
+// 1. SỬA LẠI INTERFACE KHỚP VỚI CHỮ IN HOA TRÊN FIREBASE MỚI
+// ==========================================
 interface SensorData {
-  temperature?: number | string;
-  humidity?: number | string;
-  light?: number | string;
+  TEMP?: number | string;
+  HUM?: number | string;
+  LIGHT?: number | string;
 }
 
 interface MonitoringCardsProps {
-  data: SensorData;
+  data: SensorData | null | undefined;
   loading?: boolean;
 }
 
 export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
   
-  // Xử lý dữ liệu an toàn (giữ nguyên logic đã sửa lúc trước)
-  const tempValue = data?.temperature != null ? Number(data.temperature).toFixed(1) : '--'
-  const humValue = data?.humidity != null ? Number(data.humidity).toFixed(1) : '--'
-  const lightValue = data?.light != null ? Number(data.light).toFixed(1) : '--'
+  // ==========================================
+  // 2. CẬP NHẬT CÁCH GỌI TÊN BIẾN (temperature -> TEMP, humidity -> HUM, light -> LIGHT)
+  // ==========================================
+  const tempValue = data?.TEMP != null ? Number(data.TEMP).toFixed(1) : '--'
+  const humValue = data?.HUM != null ? Number(data.HUM).toFixed(1) : '--'
+  const lightValue = data?.LIGHT != null ? Number(data.LIGHT).toFixed(1) : '--'
 
-  // Tính toán % cho thanh tiến trình (Giả sử Max Nhiệt là 50°C, Max Ẩm là 100%, Max Sáng là 1000 lux)
-  const tempPercent = data?.temperature ? Math.min((Number(data.temperature) / 50) * 100, 100) : 0
-  const humPercent = data?.humidity ? Math.min((Number(data.humidity) / 100) * 100, 100) : 0
-  const lightPercent = data?.light ? Math.min((Number(data.light) / 1000) * 100, 100) : 0
+  // Tính toán % cho thanh tiến trình
+  const tempPercent = data?.TEMP ? Math.min((Number(data.TEMP) / 50) * 100, 100) : 0
+  const humPercent = data?.HUM ? Math.min((Number(data.HUM) / 100) * 100, 100) : 0
+  const lightPercent = data?.LIGHT ? Math.min((Number(data.LIGHT) / 1000) * 100, 100) : 0
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       
       {/* THẺ 1: NHIỆT ĐỘ */}
       <Card className="relative overflow-hidden border-l-4 border-l-rose-500 shadow-sm hover:shadow-md transition-all group">
-        {/* Icon in bóng mờ làm background */}
         <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity dark:opacity-10">
           <Thermometer className="w-32 h-32" />
         </div>
@@ -46,13 +49,11 @@ export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
                 <span className="text-sm font-medium text-muted-foreground">°C</span>
               </div>
             </div>
-            {/* Vòng tròn chứa Icon */}
             <div className="p-3 bg-rose-500/10 rounded-full text-rose-500">
               <Thermometer className="w-6 h-6" />
             </div>
           </div>
           
-          {/* Thanh hiển thị mức độ trực quan */}
           <div className="mt-5 space-y-2">
             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
               <div 
@@ -63,7 +64,7 @@ export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Status</span>
               <span className="text-xs font-semibold text-rose-500">
-                {Number(data?.temperature) > 35 ? 'HIGH (CẢNH BÁO)' : 'NORMAL'}
+                {Number(data?.TEMP) > 35 ? 'HIGH (CẢNH BÁO)' : 'NORMAL'}
               </span>
             </div>
           </div>
@@ -100,7 +101,7 @@ export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Status</span>
               <span className="text-xs font-semibold text-blue-500">
-                {Number(data?.humidity) > 80 ? 'HIGH' : 'NORMAL'}
+                {Number(data?.HUM) > 80 ? 'HIGH' : 'NORMAL'}
               </span>
             </div>
           </div>

@@ -10,8 +10,8 @@ import { User, Mail, Phone, MapPin, Camera, Save, Key, Lock } from 'lucide-react
 import { toast } from 'sonner'
 
 // LINK FIREBASE ĐỂ LƯU DỮ LIỆU
-const FB_PROFILE_URL = "https://dht11-4de0f-default-rtdb.firebaseio.com/admin/profile.json"
-const FB_AUTH_URL = "https://dht11-4de0f-default-rtdb.firebaseio.com/admin/auth.json"
+const FB_PROFILE_URL = "https://doantotnghiep-808e9-default-rtdb.firebaseio.com/admin/profile.json"
+const FB_AUTH_URL = "https://doantotnghiep-808e9-default-rtdb.firebaseio.com/admin/auth.json"
 
 export default function ProfilePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false)

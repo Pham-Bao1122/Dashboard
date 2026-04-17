@@ -5,14 +5,14 @@ import { getDatabase } from 'firebase/database';
 // Cấu hình chìa khóa Firebase của huynh đệ
 // (Lấy đoạn config này trong phần Project Settings (Cài đặt dự án) trên web Firebase Console)
 const firebaseConfig = {
-  apiKey: "AIzaSyCoDZzSTvz7byzoA-s163N7ZGVuQa18lwk",
-  authDomain: "dht11-4de0f.firebaseapp.com",
+  apiKey: "AIzaSyBff0KyIuNtXQtlvf98Ds-23MdRG1ZhqOE",
+  authDomain: "doantotnghiep-808e9.firebaseapp.com",
   // Đệ nhớ URL database của huynh đệ ở ảnh trước là cái này:
-  databaseURL: "https://dht11-4de0f-default-rtdb.firebaseio.com",
-  projectId: "dht11-4de0f",
-  storageBucket: "ĐIỀN_STORAGE_BUCKET_VÀO_ĐÂY",
-  messagingSenderId: "ĐIỀN_MESSAGING_SENDER_ID_VÀO_ĐÂY",
-  appId: "ĐIỀN_APP_ID_VÀO_ĐÂY"
+  databaseURL: "https://doantotnghiep-808e9-default-rtdb.firebaseio.com/",
+  projectId: "doantotnghiep-808e9",
+  storageBucket: "doantotnghiep-808e9.firebasestorage.app",
+  messagingSenderId: "318631141510",
+  appId: "1:318631141510:web:be8a0465e305fde673f107"  
 };
 
 // Khởi tạo ứng dụng Firebase
