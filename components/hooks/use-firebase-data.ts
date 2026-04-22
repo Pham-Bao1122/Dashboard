@@ -66,16 +66,17 @@ export function useFirebaseData() {
   }, [])
 
   // ==========================================
-  // 2. CÁC HÀM ĐIỀU KHIỂN THIẾT BỊ (ĐÃ NÂNG CẤP)
+  // 2. CÁC HÀM ĐIỀU KHIỂN THIẾT BỊ (ĐÃ SỬA LỖI ESP32 KHÔNG NHẬN LỆNH)
   // ==========================================
   
   // Hàm bật/tắt thiết bị của một Node cụ thể
   const toggleDevice = async (nodeId: string, state: number) => {
     try {
-      await fetch(`${FIREBASE_BASE_URL}/CONTROL/${nodeId}/.json`, {
-        method: 'PATCH', // Chỉ cập nhật đúng trường DEVICE_STATE, giữ nguyên MODE
+      // Bắn thẳng số 0/1 vào đúng file DEVICE_STATE.json bằng lệnh PUT
+      await fetch(`${FIREBASE_BASE_URL}/CONTROL/${nodeId}/DEVICE_STATE.json`, {
+        method: 'PUT', 
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ DEVICE_STATE: state })
+        body: JSON.stringify(state) // Chỉ gửi đúng số nguyên, không bọc trong ngoặc nhọn {} nữa
       })
     } catch (err) {
       console.error(`Lỗi khi bật/tắt thiết bị Node ${nodeId}:`, err)
@@ -85,10 +86,11 @@ export function useFirebaseData() {
   // Hàm chuyển đổi chế độ AUTO / MANUAL
   const changeMode = async (nodeId: string, mode: 'AUTO' | 'MANUAL') => {
     try {
-      await fetch(`${FIREBASE_BASE_URL}/CONTROL/${nodeId}/.json`, {
-        method: 'PATCH',
+      // Bắn thẳng chữ AUTO/MANUAL vào đúng file MODE.json bằng lệnh PUT
+      await fetch(`${FIREBASE_BASE_URL}/CONTROL/${nodeId}/MODE.json`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ MODE: mode })
+        body: JSON.stringify(mode) // Gửi thẳng chuỗi String
       })
     } catch (err) {
       console.error(`Lỗi khi chuyển chế độ Node ${nodeId}:`, err)
