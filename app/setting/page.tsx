@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 // --- CẤU HÌNH EMAILJS (THAY ID CỦA HUYNH ĐỆ VÀO ĐÂY) ---
 const EMAILJS_SERVICE_ID = 'service_etpxja9' 
 const EMAILJS_TEMPLATE_ID = 'template_ju1qkvi' 
-const EMAILJS_PUBLIC_KEY = 'template_ju1qkvi' 
+const EMAILJS_PUBLIC_KEY = 'ptZwMtQLtmAQ1SKbs' 
 // --------------------------------------------------------
 
 const FB_SETTINGS_URL = 'https://doantotnghiep-808e9-default-rtdb.firebaseio.com/admin/settings.json'
