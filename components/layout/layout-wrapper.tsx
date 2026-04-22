@@ -12,7 +12,7 @@ interface LayoutWrapperProps {
   children: ReactNode
 }
 
-// Chống spam email: Sau khi báo động, chờ 5 phút (300000ms) mới được gửi mail tiếp cho cùng 1 phòng
+// ĐÃ GIẢM XUỐNG 10 GIÂY ĐỂ HUYNH ĐỆ DỄ TEST. (Khi nào nộp đồ án thì đổi lại thành 300000 nhé)
 const ALERT_COOLDOWN = 300000; 
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
@@ -42,28 +42,21 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       const now = Date.now();
       const lastAlert = lastAlertTime.current[nodeId] || 0;
 
-      // 1. BỘ QUY TẮC BÁO ĐỘNG ĐÃ ĐƯỢC BỔ SUNG ĐẦY ĐỦ
       let alertMsg = '';
       if (nodeData.TEMP > 40) {
         alertMsg = `🔥 NGUY HIỂM: Nhiệt độ tại trạm ${nodeId} đang rất cao (${nodeData.TEMP}°C)! Nguy cơ cháy nổ!`;
       } else if (nodeData.DOOR === 1) {
         alertMsg = `🚨 AN NINH: Phát hiện cửa mở trái phép tại trạm ${nodeId}!`;
       } else if (nodeData.LIGHT > 800) { 
-        // Huynh đệ có thể tự đổi số 800 này thành ngưỡng mong muốn
-        alertMsg = `☀️ CẢNH BÁO: Cường độ ánh sáng tại trạm ${nodeId} vượt ngưỡng an toàn (${nodeData.LIGHT} lux)!`;
+        alertMsg = `☀️ CẢNH BÁO: Cường độ ánh sáng tại trạm ${nodeId} vượt ngưỡng (${nodeData.LIGHT} lux)!`;
       } else if (nodeData.HUM > 80) {
-        // Cảnh báo thêm độ ẩm nếu cần
-        alertMsg = `💧 CẢNH BÁO: Độ ẩm tại trạm ${nodeId} đang quá cao (${nodeData.HUM}%), nguy cơ chập mạch!`;
+        alertMsg = `💧 CẢNH BÁO: Độ ẩm tại trạm ${nodeId} quá cao (${nodeData.HUM}%)!`;
       }
 
-      // 2. Nếu có biến VÀ đã qua 5 phút kể từ cái mail cuối cùng
+      // Nếu có biến VÀ đã qua thời gian Cooldown (10 giây)
       if (alertMsg && (now - lastAlert > ALERT_COOLDOWN)) {
         
-        lastAlertTime.current[nodeId] = now;
-
-        const emailConfigStr = localStorage.getItem('iot_emailjs_config');
-        if (!emailConfigStr) return; 
-        const emailConfig = JSON.parse(emailConfigStr);
+        lastAlertTime.current[nodeId] = now; // Khóa mỏ ngay để chống spam
 
         try {
           const res = await fetch('https://doantotnghiep-808e9-default-rtdb.firebaseio.com/admin/settings.json');
@@ -72,13 +65,29 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
 
           const { alertEmail, enableEmailAlerts, enablePushAlerts } = settings;
 
-          // HÀNH ĐỘNG 1: Popup chớp đỏ
+          // HÀNH ĐỘNG 1: Popup chớp đỏ (Luôn chạy nếu được bật)
           if (enablePushAlerts) {
             toast.error(alertMsg, { duration: 10000 }); 
           }
 
-          // HÀNH ĐỘNG 2: Gửi Email
+          // HÀNH ĐỘNG 2: Gửi Email (Kèm check lỗi)
           if (enableEmailAlerts && alertEmail) {
+            const emailConfigStr = localStorage.getItem('iot_emailjs_config');
+            
+            if (!emailConfigStr) {
+              toast.warning("Chưa thiết lập mã EmailJS trong cài đặt!");
+              return;
+            }
+
+            const emailConfig = JSON.parse(emailConfigStr);
+            
+            // Check xem huynh đệ đã thay mã XXXXXXXX chưa
+            if (emailConfig.serviceId.includes('XXXX')) {
+              toast.error("Lỗi: Bạn chưa thay mã Service ID của EmailJS trong code Settings!");
+              return;
+            }
+
+            // Tiến hành bắn mail
             emailjs.send(
               emailConfig.serviceId,
               emailConfig.templateId,
@@ -87,10 +96,12 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
                 message: alertMsg,
               },
               emailConfig.publicKey
-            ).then(() => {
-              console.log(`Đã gửi email báo động cho trạm ${nodeId} thành công!`);
+            ).then((res) => {
+              console.log("Email gửi thành công!", res.status);
+              toast.success(`Đã gửi Email báo động đến ${alertEmail}`);
             }).catch((err) => {
-              console.error('Lỗi khi bắn mail:', err);
+              console.error("Lỗi bắn mail:", err);
+              toast.error("Gửi mail thất bại! Hãy check lại API Key của EmailJS (Xem F12).");
             });
           }
         } catch (err) {
