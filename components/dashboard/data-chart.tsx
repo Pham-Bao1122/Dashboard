@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { SensorData } from '@/components/hooks/use-firebase-data'
 
 interface DataPoint {
   time: string
@@ -11,8 +10,9 @@ interface DataPoint {
   humidity: number
 }
 
+// Sửa kiểu dữ liệu thành any để không bị lỗi gạch đỏ (vì nhận dữ liệu linh động từ nhiều phòng)
 interface DataChartProps {
-  data: SensorData | null
+  data: any 
 }
 
 // 1. BIẾN TOÀN CỤC: Nằm ngoài component để không bao giờ bị reset khi chuyển tab
@@ -43,7 +43,8 @@ export function DataChart({ data }: DataChartProps) {
     if (!data) return
 
     setChartData((prev) => {
-      const currentTime = data.timestamp ? new Date(data.timestamp) : new Date();
+      // Dùng thời gian thực tế lúc nhận được data
+      const currentTime = new Date();
       
       const newPoint: DataPoint = {
         time: currentTime.toLocaleTimeString('en-US', { 
@@ -52,8 +53,9 @@ export function DataChart({ data }: DataChartProps) {
           second: '2-digit',
           hour12: false 
         }),
-        temperature: Number(data.temperature) || 0,
-        humidity: Number(data.humidity) || 0,
+        // SỬA LẠI THÀNH CHỮ IN HOA: TEMP và HUM
+        temperature: Number(data.TEMP) || 0,
+        humidity: Number(data.HUM) || 0,
       }
 
       // Tránh việc React render nhiều lần cùng 1 giây gây ra điểm ảnh bị trùng
@@ -108,12 +110,12 @@ export function DataChart({ data }: DataChartProps) {
 
               <Tooltip 
                 contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                 }}
-                labelStyle={{ fontWeight: 'bold', color: '#374151', marginBottom: '4px' }}
+                labelStyle={{ fontWeight: 'bold', color: 'hsl(var(--foreground))', marginBottom: '4px' }}
               />
               
               <Legend 
