@@ -8,36 +8,36 @@ interface AIPredictionProps {
   data: any
 }
 
-// 1. TẬP DỮ LIỆU HUẤN LUYỆN AI (Chuẩn hóa nhãn và giao thức công nghiệp)
+// 1. TẬP DỮ LIỆU HUẤN LUYỆN AI (Đã đưa về ngôn ngữ đơn giản, thân thiện)
 const trainingData = [
   { 
     temp: 25, hum: 60, light: 300, 
-    label: 'SYS_OPTIMAL', 
-    action: 'Duy trì tham số hiện tại. Không yêu cầu can thiệp phần cứng.', 
+    label: 'Tốt', 
+    action: 'Hệ thống đang hoạt động ổn định.', 
     type: 'normal' 
   },
   { 
     temp: 22, hum: 85, light: 150, 
-    label: 'HIGH_HUMIDITY_WARN', 
-    action: 'Cảnh báo rỉ sét mạch. Đề xuất kích hoạt module tản ẩm/thông gió (Relay điều khiển).', 
+    label: 'Độ ẩm cao', 
+    action: 'Môi trường khá ẩm thấp. Cần bật quạt thông gió.', 
     type: 'info' 
   },
   { 
     temp: 33, hum: 70, light: 700, 
-    label: 'THERMAL_OVERLOAD_WARN', 
-    action: 'Suy hao nhiệt năng. Khuyến nghị giám sát tản nhiệt chủ động.', 
+    label: 'Nhiệt độ cao', 
+    action: 'Hệ thống đang nóng lên. Chú ý theo dõi làm mát.', 
     type: 'warning' 
   },
   { 
     temp: 42, hum: 30, light: 900, 
-    label: 'CRITICAL_FIRE_RISK', 
-    action: 'BÁO ĐỘNG ĐỎ: Quá nhiệt cục bộ! Yêu cầu ngắt nguồn hệ thống và kích hoạt giao thức chữa cháy.', 
+    label: 'Nguy cơ cháy', 
+    action: 'Báo động: Nguy cơ cháy rất cao! Hãy tắt nguồn thiết bị ngay!', 
     type: 'danger' 
   },
   { 
     temp: 18, hum: 40, light: 50,  
-    label: 'LOW_ENERGY_STATE', 
-    action: 'Cường độ quang học và nhiệt độ dưới ngưỡng hoạt động tiêu chuẩn.', 
+    label: 'Ít hoạt động', 
+    action: 'Môi trường mát mẻ, cường độ ánh sáng thấp.', 
     type: 'info' 
   },
 ]
@@ -46,7 +46,7 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
   const [prediction, setPrediction] = useState<any>(null)
   const [confidence, setConfidence] = useState(0)
 
-  // 2. MÔ HÌNH AI: K-Nearest Neighbors (KNN) Inference Engine
+  // 2. MÔ HÌNH AI: K-Nearest Neighbors (KNN)
   useEffect(() => {
     if (!data || data.TEMP == null || data.HUM == null || data.LIGHT == null) return
 
@@ -60,7 +60,7 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
     // Chuẩn hóa Vector dữ liệu đầu vào
     const normalize = (val: number, max: number) => val / max
 
-    // Tính toán khoảng cách Euclidean trong không gian Vector 3D
+    // Tính toán khoảng cách
     trainingData.forEach((point) => {
       const distTemp = Math.pow(normalize(currentTemp, 50) - normalize(point.temp, 50), 2)
       const distHum = Math.pow(normalize(currentHum, 100) - normalize(point.hum, 100), 2)
@@ -74,7 +74,7 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
       }
     })
 
-    // Tính điểm tin cậy (Confidence Score)
+    // Tính điểm tự tin (Confidence Score)
     const confidenceScore = Math.max(0, 100 - (minDistance * 100)).toFixed(1)
 
     setPrediction(bestMatch)
@@ -84,7 +84,7 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
 
   if (!prediction) return null
 
-  // Cấu hình UI theo phân lớp nội suy
+  // Cấu hình màu sắc UI
   const config = {
     normal: { color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: <CheckCircle2 className="w-6 h-6 text-emerald-500" /> },
     info: { color: 'text-blue-500', bg: 'bg-blue-500/10', icon: <Wind className="w-6 h-6 text-blue-500" /> },
@@ -104,9 +104,9 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
       <CardHeader className="pb-2 border-b border-border/50">
         <CardTitle className="text-lg flex items-center gap-2 text-purple-600 dark:text-purple-400">
           <BrainCircuit className="w-5 h-5" />
-          KNN Inference Engine
+          Dự đoán môi trường AI
         </CardTitle>
-        <CardDescription>Tiến trình phân tích chuỗi dữ liệu môi trường thời gian thực</CardDescription>
+        <CardDescription>Phân tích dữ liệu cảm biến thời gian thực</CardDescription>
       </CardHeader>
       
       <CardContent>
@@ -117,19 +117,20 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
               {activeConfig.icon}
             </div>
             <div>
-              <p className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                Phân lớp nội suy (Class)
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                Trạng thái:
               </p>
-              <h3 className={`text-lg font-mono font-bold tracking-tight ${activeConfig.color}`}>
-                [{prediction.label}]
+              {/* Đã xóa class font-mono gây lỗi font tiếng Việt */}
+              <h3 className={`text-xl font-bold tracking-tight ${activeConfig.color}`}>
+                {prediction.label}
               </h3>
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm">
-              <span className="font-medium text-muted-foreground">Độ tin cậy (Confidence Score)</span>
-              <span className="font-mono font-bold text-purple-600">{confidence}%</span>
+              <span className="font-medium text-muted-foreground">Độ tin cậy</span>
+              <span className="font-bold text-purple-600">{confidence}%</span>
             </div>
             <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
               <div 
@@ -141,8 +142,8 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
 
           <div className="bg-muted/40 p-3 rounded-lg border border-border mt-4">
             <p className="text-sm text-foreground leading-relaxed">
-              <span className="font-mono text-xs font-semibold text-purple-500 uppercase tracking-wider block mb-1">
-                Giao thức đề xuất:
+              <span className="font-semibold text-purple-500 block mb-1">
+                Gợi ý:
               </span> 
               {prediction.action}
             </p>
