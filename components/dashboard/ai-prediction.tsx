@@ -104,7 +104,7 @@ export function AIPredictionCard({ data }: AIPredictionProps) {
       <CardHeader className="pb-2 border-b border-border/50">
         <CardTitle className="text-lg flex items-center gap-2 text-purple-600 dark:text-purple-400">
           <BrainCircuit className="w-5 h-5" />
-          Dự đoán môi trường AI
+          Dự đoán môi trường
         </CardTitle>
         <CardDescription>Phân tích dữ liệu cảm biến thời gian thực</CardDescription>
       </CardHeader>
