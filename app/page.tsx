@@ -6,7 +6,7 @@ import { MonitoringCards } from '@/components/dashboard/monitoring-cards'
 import { DeviceStatusCards } from '@/components/dashboard/device-status-cards'
 import { ControlPanel } from '@/components/dashboard/control-panel'
 import { DataChart } from '@/components/dashboard/data-chart'
-// Đã chỉnh lại đường dẫn Hook chuẩn theo máy huynh đệ
+import { AIPredictionCard } from '@/components/dashboard/ai-prediction'
 import { useFirebaseData } from '@/components/hooks/use-firebase-data' 
 import { Button } from '@/components/ui/button'
 import { Building2, DoorOpen, Info, WifiOff } from 'lucide-react'
@@ -146,6 +146,7 @@ export default function DashboardPage() {
                     <DataChart data={activeSensorData as any} />
                   </div>
                   <div className="md:col-span-1">
+                    <AIPredictionCard data={activeSensorData as any} />
                     <ControlPanel data={data as any} loading={loading} />
                   </div>
                 </div>
