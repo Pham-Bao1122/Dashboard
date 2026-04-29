@@ -2,9 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-// Đã import thêm các Icon cần thiết cho bảng thông báo
 import { Bell, Settings, AlertTriangle, Flame, Info, CheckCircle2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,21 +18,47 @@ import {
 export function Header() {
   const router = useRouter()
   
-  // KHỞI TẠO DANH SÁCH LỊCH SỬ CẢNH BÁO
-  // (Đệ đang tạo sẵn dữ liệu mẫu. Sau này huynh đệ có thể lấy dữ liệu này từ Firebase)
-  const [alerts, setAlerts] = useState([
-    { id: 1, type: 'danger', title: 'Cảnh báo Nhiệt độ', message: 'Nhiệt độ trạm AHZ1 vượt ngưỡng (42°C)!', time: 'Vừa xong', isNew: true },
-    { id: 2, type: 'warning', title: 'Môi trường', message: 'Độ ẩm trạm BHZ2 khá cao (85%).', time: '30 phút trước', isNew: false },
-    { id: 3, type: 'info', title: 'Hệ thống', message: 'Chuyển trạm AHZ1 sang chế độ Tự động.', time: '2 giờ trước', isNew: false },
-  ])
+  // KHỞI TẠO STATE RỖNG TRƯỚC KHI LOAD DỮ LIỆU THẬT
+  const [alerts, setAlerts] = useState<any[]>([])
 
-  // Đếm số lượng thông báo mới để hiện chấm đỏ
+  // DÙNG EFFECT ĐỂ TẢI DỮ LIỆU TỪ BỘ NHỚ KHI MỞ WEB VÀ LẮNG NGHE RADAR
+  useEffect(() => {
+    // Tải lịch sử cũ
+    const savedAlerts = localStorage.getItem('iot_alerts')
+    if (savedAlerts) {
+      setAlerts(JSON.parse(savedAlerts))
+    }
+
+    // Lắng nghe tín hiệu từ Radar khi có biến mới
+    const handleNewAlert = () => {
+      const updatedAlerts = localStorage.getItem('iot_alerts')
+      if (updatedAlerts) {
+        setAlerts(JSON.parse(updatedAlerts))
+      }
+    }
+    
+    // Tạo "đường dây nóng" kết nối với Radar
+    window.addEventListener('iot_alerts_updated', handleNewAlert)
+    return () => window.removeEventListener('iot_alerts_updated', handleNewAlert)
+  }, [])
+
+  // HÀM LƯU DỮ LIỆU KHI CÓ THAO TÁC XÓA HOẶC ĐÃ ĐỌC
+  const updateAlerts = (newAlerts: any[]) => {
+    setAlerts(newAlerts)
+    localStorage.setItem('iot_alerts', JSON.stringify(newAlerts))
+  }
+
   const unreadCount = alerts.filter(a => a.isNew).length
 
-  // Hàm xóa tất cả thông báo
-  const handleClearAlerts = () => setAlerts([])
+  // Xóa toàn bộ
+  const handleClearAlerts = () => updateAlerts([])
 
-  // Hàm chọn Icon theo từng loại cảnh báo
+  // Đánh dấu đã đọc
+  const handleMarkAllAsRead = () => {
+    const readAlerts = alerts.map(a => ({...a, isNew: false}))
+    updateAlerts(readAlerts)
+  }
+
   const getIcon = (type: string) => {
     switch(type) {
       case 'danger': return <Flame className="w-5 h-5 text-rose-500" />
@@ -52,12 +77,10 @@ export function Header() {
 
         <div className="flex items-center gap-4">
           
-          {/* === KHU VỰC THÔNG BÁO (BELL) === */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative hover:bg-muted">
                 <Bell className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
-                {/* Chỉ hiện chấm đỏ nhấp nháy khi có thông báo mới (isNew = true) */}
                 {unreadCount > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-card animate-pulse"></span>
                 )}
@@ -65,7 +88,6 @@ export function Header() {
             </DropdownMenuTrigger>
             
             <DropdownMenuContent align="end" className="w-80 p-0 overflow-hidden shadow-xl rounded-xl border-border/50">
-              {/* Thanh tiêu đề của bảng thông báo */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-muted/20">
                 <span className="font-semibold text-sm">Lịch sử Cảnh báo</span>
                 <Button 
@@ -79,12 +101,11 @@ export function Header() {
                 </Button>
               </div>
               
-              {/* Danh sách thông báo (Cuộn được nếu quá dài) */}
               <div className="max-h-[350px] overflow-y-auto">
                 {alerts.length === 0 ? (
                   <div className="py-10 text-center text-sm text-muted-foreground flex flex-col items-center gap-2 bg-background">
                     <CheckCircle2 className="w-8 h-8 text-muted-foreground/30" />
-                    Không có cảnh báo nào!
+                    Chưa có cảnh báo nào!
                   </div>
                 ) : (
                   <div className="flex flex-col bg-background">
@@ -115,14 +136,13 @@ export function Header() {
                 )}
               </div>
               
-              {/* Nút ở đáy bảng */}
-              {alerts.length > 0 && (
+              {alerts.length > 0 && unreadCount > 0 && (
                 <div className="p-2 border-t border-border/50 bg-muted/20 text-center">
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     className="w-full text-xs text-indigo-500 hover:text-indigo-600 font-medium"
-                    onClick={() => setAlerts(alerts.map(a => ({...a, isNew: false})))}
+                    onClick={handleMarkAllAsRead}
                   >
                     Đánh dấu đã đọc tất cả
                   </Button>
@@ -131,7 +151,6 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* === KHU VỰC CÀI ĐẶT (SETTINGS) === */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="hover:bg-muted">
@@ -141,19 +160,15 @@ export function Header() {
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuLabel className="font-semibold text-indigo-500">My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              
-              <DropdownMenuItem asChild className="cursor-pointer focus:bg-indigo-50 dark:focus:bg-indigo-950/50">
+              <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/profile">Profile</Link>
               </DropdownMenuItem>
-              
-              <DropdownMenuItem asChild className="cursor-pointer focus:bg-indigo-50 dark:focus:bg-indigo-950/50">
+              <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/setting">Settings</Link>
               </DropdownMenuItem>
-              
               <DropdownMenuSeparator />
-              
               <DropdownMenuItem 
-                className="cursor-pointer text-rose-500 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/50 font-medium"
+                className="cursor-pointer text-rose-500 focus:text-rose-600 font-medium"
                 onClick={() => {
                   alert('Đã đăng xuất thành công!')
                   router.push('/login')

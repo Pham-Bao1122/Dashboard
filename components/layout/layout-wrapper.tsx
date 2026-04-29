@@ -12,8 +12,8 @@ interface LayoutWrapperProps {
   children: ReactNode
 }
 
-// ĐÃ GIẢM XUỐNG 10 GIÂY ĐỂ HUYNH ĐỆ DỄ TEST. (Khi nào nộp đồ án thì đổi lại thành 300000 nhé)
-const ALERT_COOLDOWN = 300000; 
+// ĐÃ GIẢM XUỐNG 10 GIÂY ĐỂ DỄ TEST. (Khi nào nộp đồ án thì đổi lại thành 300000 nhé)
+const ALERT_COOLDOWN = 10000; 
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
   const router = useRouter()
@@ -32,7 +32,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
   }, [router])
 
   // ==========================================
-  // RADAR NGẦM: TỰ ĐỘNG PHÁT HIỆN VÀ GỬI MAIL
+  // RADAR NGẦM: TỰ ĐỘNG PHÁT HIỆN, LƯU LỊCH SỬ VÀ GỬI MAIL
   // ==========================================
   useEffect(() => {
     if (!isAuthorized || !data?.NODES) return;
@@ -43,21 +43,53 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       const lastAlert = lastAlertTime.current[nodeId] || 0;
 
       let alertMsg = '';
+      let alertType = 'info';
+      let alertTitle = 'Thông báo hệ thống';
+
+      // 1. PHÂN LOẠI CẢNH BÁO
       if (nodeData.TEMP > 40) {
         alertMsg = `🔥 NGUY HIỂM: Nhiệt độ tại trạm ${nodeId} đang rất cao (${nodeData.TEMP}°C)! Nguy cơ cháy nổ!`;
+        alertType = 'danger';
+        alertTitle = 'Cảnh báo Nhiệt độ';
       } else if (nodeData.DOOR === 1) {
         alertMsg = `🚨 AN NINH: Phát hiện cửa mở trái phép tại trạm ${nodeId}!`;
+        alertType = 'danger';
+        alertTitle = 'Cảnh báo An ninh';
       } else if (nodeData.LIGHT > 800) { 
         alertMsg = `☀️ CẢNH BÁO: Cường độ ánh sáng tại trạm ${nodeId} vượt ngưỡng (${nodeData.LIGHT} lux)!`;
+        alertType = 'warning';
+        alertTitle = 'Cảnh báo Ánh sáng';
       } else if (nodeData.HUM > 80) {
         alertMsg = `💧 CẢNH BÁO: Độ ẩm tại trạm ${nodeId} quá cao (${nodeData.HUM}%)!`;
+        alertType = 'info';
+        alertTitle = 'Cảnh báo Độ ẩm';
       }
 
-      // Nếu có biến VÀ đã qua thời gian Cooldown (10 giây)
+      // 2. NẾU CÓ BIẾN VÀ ĐÃ QUA THỜI GIAN COOLDOWN
       if (alertMsg && (now - lastAlert > ALERT_COOLDOWN)) {
         
         lastAlertTime.current[nodeId] = now; // Khóa mỏ ngay để chống spam
 
+        // --- CẤY THÊM TÍNH NĂNG: LƯU VÀO BỘ NHỚ CHO CÁI CHUÔNG ĐỌC ---
+        const newAlertObj = {
+          id: Date.now(),
+          type: alertType,
+          title: alertTitle,
+          message: alertMsg,
+          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          isNew: true
+        };
+
+        // Lấy lịch sử cũ, nhét cái mới lên đầu, giữ tối đa 50 cái cho nhẹ máy
+        const existingAlerts = JSON.parse(localStorage.getItem('iot_alerts') || '[]');
+        const updatedAlerts = [newAlertObj, ...existingAlerts].slice(0, 50); 
+        localStorage.setItem('iot_alerts', JSON.stringify(updatedAlerts));
+        
+        // Phát loa thông báo cho Header biết để hiện chấm đỏ
+        window.dispatchEvent(new Event('iot_alerts_updated'));
+        // -------------------------------------------------------------
+
+        // 3. THỰC THI GỬI EMAIL VÀ POPUP
         try {
           const res = await fetch('https://doantotnghiep-808e9-default-rtdb.firebaseio.com/admin/settings.json');
           const settings = await res.json();
@@ -65,9 +97,10 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
 
           const { alertEmail, enableEmailAlerts, enablePushAlerts } = settings;
 
-          // HÀNH ĐỘNG 1: Popup chớp đỏ (Luôn chạy nếu được bật)
+          // HÀNH ĐỘNG 1: Popup chớp đỏ
           if (enablePushAlerts) {
-            toast.error(alertMsg, { duration: 10000 }); 
+            if (alertType === 'danger') toast.error(alertMsg, { duration: 10000 }); 
+            else toast.warning(alertMsg, { duration: 10000 });
           }
 
           // HÀNH ĐỘNG 2: Gửi Email (Kèm check lỗi)
@@ -81,13 +114,11 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
 
             const emailConfig = JSON.parse(emailConfigStr);
             
-            // Check xem huynh đệ đã thay mã XXXXXXXX chưa
             if (emailConfig.serviceId.includes('XXXX')) {
               toast.error("Lỗi: Bạn chưa thay mã Service ID của EmailJS trong code Settings!");
               return;
             }
 
-            // Tiến hành bắn mail
             emailjs.send(
               emailConfig.serviceId,
               emailConfig.templateId,
