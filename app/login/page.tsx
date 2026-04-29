@@ -16,7 +16,7 @@ const FIREBASE_PROFILE_URL = "https://doantotnghiep-808e9-default-rtdb.firebasei
 
 // MÃ EMAILJS (Đã cấu hình sẵn theo mã của huynh đệ)
 const EMAILJS_SERVICE_ID = 'service_etpxja9' 
-const EMAILJS_TEMPLATE_ID = 'template_ju1qkvi' 
+const EMAILJS_TEMPLATE_ID = 'template_ig6yikb' 
 const EMAILJS_PUBLIC_KEY = 'ptZwMtQLtmAQ1SKbs'
 
 export default function LoginPage() {
