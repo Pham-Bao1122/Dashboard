@@ -15,9 +15,9 @@ const FIREBASE_AUTH_URL = "https://doantotnghiep-808e9-default-rtdb.firebaseio.c
 const FIREBASE_PROFILE_URL = "https://doantotnghiep-808e9-default-rtdb.firebaseio.com/admin/profile.json" 
 
 // MÃ EMAILJS (Đã cấu hình sẵn theo mã của huynh đệ)
-const EMAILJS_SERVICE_ID = 'service_3d371vc' 
-const EMAILJS_TEMPLATE_ID = 'template_ka7gyzs' 
-const EMAILJS_PUBLIC_KEY = 'a2_oFc1ngj4-lSal9'
+const EMAILJS_SERVICE_ID = 'service_etpxja9' 
+const EMAILJS_TEMPLATE_ID = 'template_ig6yikb' 
+const EMAILJS_PUBLIC_KEY = 'ptZwMtQLtmAQ1SKbs'
 
 export default function LoginPage() {
   const router = useRouter()
