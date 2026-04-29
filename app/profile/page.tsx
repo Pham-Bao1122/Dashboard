@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { User, Mail, Phone, MapPin, Camera, Save, Key, Lock } from 'lucide-react'
+// Đã xóa import Phone
+import { User, Mail, MapPin, Camera, Save, Key, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 
 // LINK FIREBASE ĐỂ LƯU DỮ LIỆU
@@ -17,11 +18,11 @@ export default function ProfilePage() {
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   
+  // Đã xóa biến phone khỏi state mặc định
   const [profile, setProfile] = useState({
     fullName: 'Admin Hệ Thống',
     role: 'Kỹ sư Điện tử Viễn thông',
     email: 'admin.iot@example.com',
-    phone: '+84 123 456 789',
     location: 'Hồ Chí Minh, Việt Nam',
   })
 
@@ -184,14 +185,8 @@ export default function ProfilePage() {
                       <Input id="email" name="email" value={profile.email} onChange={handleProfileChange} className="pl-9" />
                     </div>
                   </div>
+                  {/* Kéo Location lên ngang hàng với Email bằng cách xóa class md:col-span-2 */}
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="phone" name="phone" value={profile.phone} onChange={handleProfileChange} className="pl-9" />
-                    </div>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="location">Location</Label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
