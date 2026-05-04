@@ -9,7 +9,6 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/node-management', label: 'Node Management', icon: Settings },
   { href: '/history', label: 'History', icon: BarChart3 },
-  { href: '/configuration', label: 'Configuration', icon: Sliders },
 ]
 
 export function Sidebar() {

@@ -132,7 +132,6 @@ export default function LoginPage() {
                 <Input
                   id="username"
                   name="username"
-                  placeholder="Nhập 'admin'"
                   required
                   value={credentials.username}
                   onChange={handleChange}
@@ -151,7 +150,6 @@ export default function LoginPage() {
                   id="password"
                   name="password"
                   type="password"
-                  placeholder="Nhập '123456'"
                   required
                   value={credentials.password}
                   onChange={handleChange}
