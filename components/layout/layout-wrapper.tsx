@@ -18,9 +18,6 @@ const ALERT_COOLDOWN = 10000;
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
-  
-  const { data } = useFirebaseData()
-  const lastAlertTime = useRef<Record<string, number>>({})
 
   useEffect(() => {
     const isAuth = localStorage.getItem('is_logged_in')
@@ -31,14 +28,32 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
     }
   }, [router])
 
+// ... (giữ nguyên phần trên) ...
+
+  const { data } = useFirebaseData()
+  const lastAlertTime = useRef<Record<string, number>>({})
+  
+  // THÊM BIẾN NÀY ĐỂ NHẬN BIẾT LẦN LOAD ĐẦU TIÊN
+  const isInitialLoad = useRef(true) 
+  const previousData = useRef<any>(null) // Lưu dữ liệu nhịp trước để so sánh sự thay đổi
+
   // ==========================================
   // RADAR NGẦM: TỰ ĐỘNG PHÁT HIỆN, LƯU LỊCH SỬ VÀ GỬI MAIL
   // ==========================================
   useEffect(() => {
     if (!isAuthorized || !data?.NODES) return;
 
+    // KHI VỪA MỞ WEB: Chỉ lưu trạng thái ban đầu, tuyệt đối không báo động để chống Spam
+    if (isInitialLoad.current) {
+      previousData.current = JSON.parse(JSON.stringify(data.NODES));
+      isInitialLoad.current = false;
+      return;
+    }
+
     Object.keys(data.NODES).forEach(async (nodeId) => {
       const nodeData = data.NODES[nodeId];
+      const prevNodeData = previousData.current?.[nodeId] || {}; // Lấy dữ liệu nhịp trước ra so sánh
+      
       const now = Date.now();
       const lastAlert = lastAlertTime.current[nodeId] || 0;
 
@@ -46,20 +61,20 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       let alertType = 'info';
       let alertTitle = 'Thông báo hệ thống';
 
-      // 1. PHÂN LOẠI CẢNH BÁO
-      if (nodeData.TEMP > 40) {
+      // 1. PHÂN LOẠI CẢNH BÁO (Chỉ báo khi trạng thái vọt qua ngưỡng so với nhịp trước)
+      if (nodeData.TEMP > 40 && prevNodeData.TEMP <= 40) {
         alertMsg = `🔥 NGUY HIỂM: Nhiệt độ tại trạm ${nodeId} đang rất cao (${nodeData.TEMP}°C)! Nguy cơ cháy nổ!`;
         alertType = 'danger';
         alertTitle = 'Cảnh báo Nhiệt độ';
-      } else if (nodeData.DOOR === 1) {
+      } else if (nodeData.DOOR === 1 && prevNodeData.DOOR === 0) {
         alertMsg = `🚨 AN NINH: Phát hiện cửa mở trái phép tại trạm ${nodeId}!`;
         alertType = 'danger';
         alertTitle = 'Cảnh báo An ninh';
-      } else if (nodeData.LIGHT > 800) { 
+      } else if (nodeData.LIGHT > 800 && prevNodeData.LIGHT <= 800) { 
         alertMsg = `☀️ CẢNH BÁO: Cường độ ánh sáng tại trạm ${nodeId} vượt ngưỡng (${nodeData.LIGHT} lux)!`;
         alertType = 'warning';
         alertTitle = 'Cảnh báo Ánh sáng';
-      } else if (nodeData.HUM > 80) {
+      } else if (nodeData.HUM > 80 && prevNodeData.HUM <= 80) {
         alertMsg = `💧 CẢNH BÁO: Độ ẩm tại trạm ${nodeId} quá cao (${nodeData.HUM}%)!`;
         alertType = 'info';
         alertTitle = 'Cảnh báo Độ ẩm';
@@ -68,9 +83,8 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       // 2. NẾU CÓ BIẾN VÀ ĐÃ QUA THỜI GIAN COOLDOWN
       if (alertMsg && (now - lastAlert > ALERT_COOLDOWN)) {
         
-        lastAlertTime.current[nodeId] = now; // Khóa mỏ ngay để chống spam
+        lastAlertTime.current[nodeId] = now; 
 
-        // --- CẤY THÊM TÍNH NĂNG: LƯU VÀO BỘ NHỚ CHO CÁI CHUÔNG ĐỌC ---
         const newAlertObj = {
           id: Date.now(),
           type: alertType,
@@ -80,14 +94,11 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
           isNew: true
         };
 
-        // Lấy lịch sử cũ, nhét cái mới lên đầu, giữ tối đa 50 cái cho nhẹ máy
         const existingAlerts = JSON.parse(localStorage.getItem('iot_alerts') || '[]');
         const updatedAlerts = [newAlertObj, ...existingAlerts].slice(0, 50); 
         localStorage.setItem('iot_alerts', JSON.stringify(updatedAlerts));
         
-        // Phát loa thông báo cho Header biết để hiện chấm đỏ
         window.dispatchEvent(new Event('iot_alerts_updated'));
-        // -------------------------------------------------------------
 
         // 3. THỰC THI GỬI EMAIL VÀ POPUP
         try {
@@ -97,58 +108,34 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
 
           const { alertEmail, enableEmailAlerts, enablePushAlerts } = settings;
 
-          // HÀNH ĐỘNG 1: Popup chớp đỏ
           if (enablePushAlerts) {
             if (alertType === 'danger') toast.error(alertMsg, { duration: 10000 }); 
             else toast.warning(alertMsg, { duration: 10000 });
           }
 
-          // HÀNH ĐỘNG 2: Gửi Email (Kèm check lỗi)
           if (enableEmailAlerts && alertEmail) {
             const emailConfigStr = localStorage.getItem('iot_emailjs_config');
-            
-            if (!emailConfigStr) {
-              toast.warning("Chưa thiết lập mã EmailJS trong cài đặt!");
-              return;
+            if (emailConfigStr) {
+               const emailConfig = JSON.parse(emailConfigStr);
+               if (!emailConfig.serviceId.includes('XXXX')) {
+                 emailjs.send(
+                   emailConfig.serviceId, emailConfig.templateId, { to_email: alertEmail, message: alertMsg }, emailConfig.publicKey
+                 ).catch(err => console.error(err));
+               }
             }
-
-            const emailConfig = JSON.parse(emailConfigStr);
-            
-            if (emailConfig.serviceId.includes('XXXX')) {
-              toast.error("Lỗi: Bạn chưa thay mã Service ID của EmailJS trong code Settings!");
-              return;
-            }
-
-            emailjs.send(
-              emailConfig.serviceId,
-              emailConfig.templateId,
-              {
-                to_email: alertEmail,
-                message: alertMsg,
-              },
-              emailConfig.publicKey
-            ).then((res) => {
-              console.log("Email gửi thành công!", res.status);
-              toast.success(`Đã gửi Email báo động đến ${alertEmail}`);
-            }).catch((err) => {
-              console.error("Lỗi bắn mail:", err);
-              toast.error("Gửi mail thất bại! Hãy check lại API Key của EmailJS (Xem F12).");
-            });
           }
         } catch (err) {
           console.error('Lỗi khi kích hoạt báo động:', err);
         }
       }
     });
+
+    // Cập nhật lại dữ liệu "nhịp trước" để dùng cho nhịp quét tiếp theo
+    previousData.current = JSON.parse(JSON.stringify(data.NODES));
+
   }, [data, isAuthorized]);
 
-  if (!isAuthorized) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
-      </div>
-    )
-  }
+  // ... (giữ nguyên phần return ở dưới) ...
 
   return (
     <div className="min-h-screen bg-background">
