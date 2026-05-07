@@ -15,7 +15,7 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-sidebar border-r border-sidebar-border h-screen fixed left-0 top-0 overflow-y-auto">
+    <aside className="w-64 bg-sidebar border-r border-sidebar-border h-screen left-0 top-0 overflow-y-auto">
       <div className="p-6 border-b border-sidebar-border">
         <h1 className="text-2xl font-bold text-sidebar-foreground">IoT Monitor</h1>
         <p className="text-sm text-sidebar-foreground/60 mt-1">Environmental System</p>

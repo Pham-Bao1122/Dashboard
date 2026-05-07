@@ -12,38 +12,47 @@ interface LayoutWrapperProps {
   children: ReactNode
 }
 
-// ĐÃ GIẢM XUỐNG 10 GIÂY ĐỂ DỄ TEST. (Khi nào nộp đồ án thì đổi lại thành 300000 nhé)
 const ALERT_COOLDOWN = 10000; 
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false) // MỚI: State quản lý Sidebar Mobile
+  
+  const { data } = useFirebaseData()
+  const lastAlertTime = useRef<Record<string, number>>({})
+  const isInitialLoad = useRef(true) 
+  const previousData = useRef<any>(null) 
 
   useEffect(() => {
     const isAuth = localStorage.getItem('is_logged_in')
-    if (isAuth !== 'true') {
-      router.push('/login')
-    } else {
-      setIsAuthorized(true)
-    }
+    if (isAuth !== 'true') router.push('/login')
+    else setIsAuthorized(true)
   }, [router])
 
-// ... (giữ nguyên phần trên) ...
+  // Dọn rác tự động
+  useEffect(() => {
+    const cleanupHistory = () => {
+      const savedAutoClear = localStorage.getItem('iot_autoclear_days') || '7';
+      if (savedAutoClear === 'never') return;
+      const days = parseInt(savedAutoClear);
+      const cutoffTime = Date.now() - (days * 24 * 60 * 60 * 1000); 
+      const existingAlerts = JSON.parse(localStorage.getItem('iot_alerts') || '[]');
+      const validAlerts = existingAlerts.filter((alert: any) => alert.id > cutoffTime);
+      if (validAlerts.length !== existingAlerts.length) {
+        localStorage.setItem('iot_alerts', JSON.stringify(validAlerts));
+        window.dispatchEvent(new Event('iot_alerts_updated'));
+      }
+    };
+    cleanupHistory(); 
+    window.addEventListener('iot_settings_updated', cleanupHistory); 
+    return () => window.removeEventListener('iot_settings_updated', cleanupHistory);
+  }, []);
 
-  const { data } = useFirebaseData()
-  const lastAlertTime = useRef<Record<string, number>>({})
-  
-  // THÊM BIẾN NÀY ĐỂ NHẬN BIẾT LẦN LOAD ĐẦU TIÊN
-  const isInitialLoad = useRef(true) 
-  const previousData = useRef<any>(null) // Lưu dữ liệu nhịp trước để so sánh sự thay đổi
-
-  // ==========================================
-  // RADAR NGẦM: TỰ ĐỘNG PHÁT HIỆN, LƯU LỊCH SỬ VÀ GỬI MAIL
-  // ==========================================
+  // Radar Ngầm
   useEffect(() => {
     if (!isAuthorized || !data?.NODES) return;
 
-    // KHI VỪA MỞ WEB: Chỉ lưu trạng thái ban đầu, tuyệt đối không báo động để chống Spam
     if (isInitialLoad.current) {
       previousData.current = JSON.parse(JSON.stringify(data.NODES));
       isInitialLoad.current = false;
@@ -52,7 +61,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
 
     Object.keys(data.NODES).forEach(async (nodeId) => {
       const nodeData = data.NODES[nodeId];
-      const prevNodeData = previousData.current?.[nodeId] || {}; // Lấy dữ liệu nhịp trước ra so sánh
+      const prevNodeData = previousData.current?.[nodeId] || {}; 
       
       const now = Date.now();
       const lastAlert = lastAlertTime.current[nodeId] || 0;
@@ -61,7 +70,6 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       let alertType = 'info';
       let alertTitle = 'Thông báo hệ thống';
 
-      // 1. PHÂN LOẠI CẢNH BÁO (Chỉ báo khi trạng thái vọt qua ngưỡng so với nhịp trước)
       if (nodeData.TEMP > 40 && prevNodeData.TEMP <= 40) {
         alertMsg = `🔥 NGUY HIỂM: Nhiệt độ tại trạm ${nodeId} đang rất cao (${nodeData.TEMP}°C)! Nguy cơ cháy nổ!`;
         alertType = 'danger';
@@ -80,16 +88,11 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
         alertTitle = 'Cảnh báo Độ ẩm';
       }
 
-      // 2. NẾU CÓ BIẾN VÀ ĐÃ QUA THỜI GIAN COOLDOWN
       if (alertMsg && (now - lastAlert > ALERT_COOLDOWN)) {
-        
         lastAlertTime.current[nodeId] = now; 
 
         const newAlertObj = {
-          id: Date.now(),
-          type: alertType,
-          title: alertTitle,
-          message: alertMsg,
+          id: Date.now(), type: alertType, title: alertTitle, message: alertMsg,
           time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
           isNew: true
         };
@@ -97,10 +100,8 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
         const existingAlerts = JSON.parse(localStorage.getItem('iot_alerts') || '[]');
         const updatedAlerts = [newAlertObj, ...existingAlerts].slice(0, 50); 
         localStorage.setItem('iot_alerts', JSON.stringify(updatedAlerts));
-        
         window.dispatchEvent(new Event('iot_alerts_updated'));
 
-        // 3. THỰC THI GỬI EMAIL VÀ POPUP
         try {
           const res = await fetch('https://doantotnghiep-808e9-default-rtdb.firebaseio.com/admin/settings.json');
           const settings = await res.json();
@@ -119,7 +120,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
                const emailConfig = JSON.parse(emailConfigStr);
                if (!emailConfig.serviceId.includes('XXXX')) {
                  emailjs.send(
-                   emailConfig.serviceId, emailConfig.templateId, { to_email: alertEmail, message: alertMsg }, emailConfig.publicKey
+                   emailConfig.serviceId, emailConfig.templateAlertId || emailConfig.templateId, { to_email: alertEmail, message: alertMsg }, emailConfig.publicKey
                  ).catch(err => console.error(err));
                }
             }
@@ -130,18 +131,40 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       }
     });
 
-    // Cập nhật lại dữ liệu "nhịp trước" để dùng cho nhịp quét tiếp theo
     previousData.current = JSON.parse(JSON.stringify(data.NODES));
-
   }, [data, isAuthorized]);
 
-  // ... (giữ nguyên phần return ở dưới) ...
+  if (!isAuthorized) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <Header />
-      <main className="ml-64 mt-16 p-6">
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      
+      {/* 1. LỚP NỀN ĐEN CHỐNG CHÓI KHI MỞ MENU MOBILE */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* 2. KHUNG TRƯỢT MENU BÊN TRÁI (Trượt ra khi isSidebarOpen = true) */}
+      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="w-64 h-full bg-card shadow-xl md:shadow-none" onClick={() => setIsSidebarOpen(false)}>
+          <Sidebar />
+        </div>
+      </div>
+
+      {/* 3. HEADER ĐƯỢC GẮN LỆNH MỞ MENU */}
+      <Header onOpenSidebar={() => setIsSidebarOpen(true)} />
+      
+      {/* 4. MAIN CONTENT: Không còn bị ép ml-64 trên điện thoại nữa */}
+      <main className="ml-0 md:ml-64 mt-16 p-4 md:p-6 transition-all duration-300">
         {children}
       </main>
     </div>
