@@ -49,7 +49,7 @@ export default function RootLayout({
       {/* Đã xóa đoạn thẻ <head> chứa script gây xung đột */}
       
       {/* Đã xóa chữ 'dark' ép cứng trong className */}
-      <body className="font-sans antialiased">
+      <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           {children}
           <Toaster position="top-right" />

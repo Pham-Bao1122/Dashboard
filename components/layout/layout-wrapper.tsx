@@ -143,7 +143,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background relative flex flex-col">
       
       {/* 1. LỚP NỀN ĐEN CHỐNG CHÓI KHI MỞ MENU MOBILE */}
       {isSidebarOpen && (

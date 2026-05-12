@@ -147,7 +147,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="md:col-span-1">
                     <AIPredictionCard data={activeSensorData as any} />
-                    <ControlPanel data={data as any} loading={loading} />
+                    <ControlPanel data={data as any} loading={loading} activeNodeId={activeNodeId} />
                   </div>
                 </div>
               </>
