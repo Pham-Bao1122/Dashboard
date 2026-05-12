@@ -109,7 +109,7 @@ export default function HistoryPage() {
       color: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950/30", icon: <AlertTriangle className="w-5 h-5 text-rose-500" />
     }
     if (temp >= 31) return { 
-      text: "Môi trường khá nóng. Nên chú ý bật hệ thống thông gió (Relay) để duy trì nhiệt độ thiết bị.", 
+      text: "Môi trường khá nóng. Nên chú ý bật hệ thống thông gió để duy trì nhiệt độ thiết bị.", 
       color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950/30", icon: <Info className="w-5 h-5 text-amber-500" />
     }
     return { 
