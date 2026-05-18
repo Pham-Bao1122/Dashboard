@@ -195,9 +195,10 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <div className="flex justify-end pt-4 border-t border-border mt-4">
+                  {/* ĐÃ SỬA CHỮ Ở ĐÂY */}
                   <Button onClick={handleSaveProfile} disabled={isSavingProfile} className="flex gap-2">
                     <Save className="w-4 h-4" />
-                    {isSavingProfile ? 'Saving...' : 'Sync Profile'}
+                    {isSavingProfile ? 'Đang lưu...' : 'Lưu hồ sơ'}
                   </Button>
                 </div>
               </CardContent>
@@ -277,9 +278,10 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex justify-end pt-4 border-t border-border mt-4">
+                  {/* ĐÃ SỬA CHỮ Ở ĐÂY */}
                   <Button onClick={handleUpdateAuth} disabled={isUpdatingAuth} className="flex gap-2">
                     <Save className="w-4 h-4" />
-                    {isUpdatingAuth ? 'Updating...' : 'Sync Security'}
+                    {isUpdatingAuth ? 'Đang cập nhật...' : 'Lưu mật khẩu'}
                   </Button>
                 </div>
               </CardContent>
