@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Lock, User, KeyRound } from 'lucide-react'
+// Đã thêm icon Eye và EyeOff ở dòng dưới
+import { Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
 import emailjs from '@emailjs/browser'
 
@@ -24,6 +25,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isRecovering, setIsRecovering] = useState(false)
   const [credentials, setCredentials] = useState({ username: '', password: '' })
+  
+  // Thêm state để theo dõi trạng thái ẩn/hiện mật khẩu
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value })
@@ -144,17 +148,32 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Mật khẩu</Label>
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <div className="relative flex items-center">
+                <Lock className="absolute left-3 h-4 w-4 text-muted-foreground" />
+                
+                {/* Đã sửa type và thêm padding phải (pr-10) để chữ không đè lên icon */}
                 <Input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={credentials.password}
                   onChange={handleChange}
-                  className="pl-9"
+                  className="pl-9 pr-10" 
                 />
+                
+                {/* Nút bấm ẩn/hiện mật khẩu */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
           </CardContent>
