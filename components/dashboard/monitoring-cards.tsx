@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Thermometer, Droplets, Sun } from 'lucide-react'
 
 // ==========================================
-// 1. SỬA LẠI INTERFACE KHỚP VỚI CHỮ IN HOA TRÊN FIREBASE MỚI
+// 1. INTERFACE KHỚP VỚI CHỮ IN HOA TRÊN FIREBASE
 // ==========================================
 interface SensorData {
   TEMP?: number | string;
@@ -20,7 +20,7 @@ interface MonitoringCardsProps {
 export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
   
   // ==========================================
-  // 2. CẬP NHẬT CÁCH GỌI TÊN BIẾN (temperature -> TEMP, humidity -> HUM, light -> LIGHT)
+  // 2. CẬP NHẬT CÁCH GỌI TÊN BIẾN
   // ==========================================
   const tempValue = data?.TEMP != null ? Number(data.TEMP).toFixed(1) : '--'
   const humValue = data?.HUM != null ? Number(data.HUM).toFixed(1) : '--'
@@ -31,10 +31,27 @@ export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
   const humPercent = data?.HUM ? Math.min((Number(data.HUM) / 100) * 100, 100) : 0
   const lightPercent = data?.LIGHT ? Math.min((Number(data.LIGHT) / 1000) * 100, 100) : 0
 
+  // ==========================================
+  // 3. LOGIC ĐẶC TRỊ PHÂN CHIA 3 MỨC ĐỘ ÁNH SÁNG
+  // ==========================================
+  const getLightStatus = (lux: number | undefined) => {
+    if (lux == null) return { text: '--', color: 'text-muted-foreground' }
+    
+    if (lux < 200) {
+      return { text: 'WEAK', color: 'text-slate-500 dark:text-slate-400' }
+    } else if (lux <= 700) {
+      return { text: 'NORMAL', color: 'text-emerald-500' }
+    } else {
+      return { text: 'HIGH', color: 'text-amber-500 font-bold animate-pulse' }
+    }
+  }
+
+  const lightStatus = getLightStatus(data?.LIGHT ? Number(data.LIGHT) : undefined)
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       
-      {/* THẺ 1: NHIỆT ĐỘ */}
+      {/* THÈ 1: NHIỆT ĐỘ */}
       <Card className="relative overflow-hidden border-l-4 border-l-rose-500 shadow-sm hover:shadow-md transition-all group">
         <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity dark:opacity-10">
           <Thermometer className="w-32 h-32" />
@@ -137,8 +154,9 @@ export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Status</span>
-              <span className="text-xs font-semibold text-amber-500">
-                NORMAL
+              {/* ĐÃ THAY ĐỔI Ở ĐÂY: Hiển thị chữ và màu sắc động theo mức độ lux */}
+              <span className={`text-xs font-semibold transition-colors ${lightStatus.color}`}>
+                {lightStatus.text}
               </span>
             </div>
           </div>
