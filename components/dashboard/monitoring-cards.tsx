@@ -37,7 +37,7 @@ export function MonitoringCards({ data, loading }: MonitoringCardsProps) {
   const getLightStatus = (lux: number | undefined) => {
     if (lux == null) return { text: '--', color: 'text-muted-foreground' }
     
-    if (lux < 200) {
+    if (lux < 15) {
       return { text: 'WEAK', color: 'text-slate-500 dark:text-slate-400' }
     } else if (lux <= 700) {
       return { text: 'NORMAL', color: 'text-emerald-500' }
