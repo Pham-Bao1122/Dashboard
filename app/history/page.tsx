@@ -9,67 +9,79 @@ import { Thermometer, Droplets, Sun, AlertTriangle, CheckCircle2, Info, Trash2 }
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
-// Khuôn mẫu 7 ngày trống trơn
-const emptyHistory = [
-  { date: 'Mon', temp: 0, humidity: 0, light: 0, count: 0 },
-  { date: 'Tue', temp: 0, humidity: 0, light: 0, count: 0 },
-  { date: 'Wed', temp: 0, humidity: 0, light: 0, count: 0 },
-  { date: 'Thu', temp: 0, humidity: 0, light: 0, count: 0 },
-  { date: 'Fri', temp: 0, humidity: 0, light: 0, count: 0 },
-  { date: 'Sat', temp: 0, humidity: 0, light: 0, count: 0 },
-  { date: 'Sun', temp: 0, humidity: 0, light: 0, count: 0 },
-]
+// ==========================================
+// HÀM TẠO TỰ ĐỘNG LỊCH SỬ 14 NGÀY GẦN NHẤT (Định dạng DD/MM)
+// ==========================================
+const generate14Days = () => {
+  const days = []
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    // Lấy ngày tháng định dạng kiểu Việt Nam (VD: 01/06)
+    const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+    days.push({ date: dateStr, temp: 0, humidity: 0, light: 0, count: 0 })
+  }
+  return days
+}
 
 export default function HistoryPage() {
   const { data } = useFirebaseData()
-  const [historyData, setHistoryData] = useState(emptyHistory)
+  
+  // Khởi tạo state bằng khuôn 14 ngày vừa tạo
+  const [historyData, setHistoryData] = useState(generate14Days())
   const [mounted, setMounted] = useState(false)
 
   // ==========================================
-  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (TÍNH TRUNG BÌNH CỘNG DỒN)
+  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (CUỐN CHIẾU 14 NGÀY)
   // ==========================================
   useEffect(() => {
-    // 1. Tải lịch sử từ LocalStorage
-    const savedHistory = localStorage.getItem('iot_weekly_history_v2')
-    let currentHistory = savedHistory ? JSON.parse(savedHistory) : emptyHistory
+    // 1. Kéo dữ liệu cũ từ LocalStorage lên
+    const savedHistory = localStorage.getItem('iot_14days_history_v3')
+    const parsedSaved = savedHistory ? JSON.parse(savedHistory) : []
 
-    // Lấy ngày hôm nay
-    const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' })
+    // 2. Tạo khung 14 ngày của thời điểm hiện tại
+    let current14Days = generate14Days()
 
-    // 2. Lấy dữ liệu thật từ Firebase (Lấy đại diện Node đầu tiên tìm thấy - ví dụ AHZ1)
+    // 3. Lắp ghép dữ liệu: Bê dữ liệu cũ đắp vào khung mới (nếu trùng ngày)
+    current14Days = current14Days.map(templateDay => {
+      const foundOldData = parsedSaved.find((old: any) => old.date === templateDay.date)
+      return foundOldData ? foundOldData : templateDay
+    })
+
+    // Lấy ngày hôm nay để cập nhật số liệu mới nhất
+    const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+
+    // 4. Lấy dữ liệu thật từ Firebase cộng dồn vào hôm nay
     if (data && data.NODES) {
       const firstNodeId = Object.keys(data.NODES)[0]
       const sensorData = data.NODES[firstNodeId]
 
       if (sensorData && sensorData.TEMP != null) {
-        const todayIndex = currentHistory.findIndex((item: any) => item.date === todayStr)
+        const todayIndex = current14Days.findIndex((item: any) => item.date === todayStr)
         
         if (todayIndex !== -1) {
-          const currentDay = currentHistory[todayIndex]
+          const currentDay = current14Days[todayIndex]
           
-          // Tính trung bình cộng dồn: (Tổng cũ + số mới) / (Tổng số lần đo + 1)
+          // Tính trung bình cộng dồn
           const newCount = (currentDay.count || 0) + 1
           const newTemp = ((currentDay.temp * (newCount - 1)) + sensorData.TEMP) / newCount
           const newHum = ((currentDay.humidity * (newCount - 1)) + sensorData.HUM) / newCount
           const newLight = ((currentDay.light * (newCount - 1)) + sensorData.LIGHT) / newCount
 
-          currentHistory[todayIndex] = {
+          current14Days[todayIndex] = {
             date: todayStr,
             temp: Number(newTemp.toFixed(1)),
             humidity: Number(newHum.toFixed(1)),
             light: Number(newLight.toFixed(0)),
             count: newCount
           }
-          
-          // Lưu vào bộ nhớ ngay lập tức
-          setHistoryData([...currentHistory])
-          localStorage.setItem('iot_weekly_history_v2', JSON.stringify(currentHistory))
         }
       }
-    } else if (savedHistory) {
-      setHistoryData(currentHistory)
     }
     
+    // Lưu ngược lại vào State và LocalStorage
+    setHistoryData([...current14Days])
+    localStorage.setItem('iot_14days_history_v3', JSON.stringify(current14Days))
     setMounted(true)
   }, [data])
 
@@ -84,7 +96,7 @@ export default function HistoryPage() {
       return day
     })
     setHistoryData(newHistory)
-    localStorage.setItem('iot_weekly_history_v2', JSON.stringify(newHistory))
+    localStorage.setItem('iot_14days_history_v3', JSON.stringify(newHistory))
     toast.success(`Đã xóa dữ liệu ngày ${dateStr}`)
   }
 
@@ -105,7 +117,7 @@ export default function HistoryPage() {
 
     const temp = Number(avgTemp)
     if (temp >= 35) return { 
-      text: "Cảnh báo rủi ro! Nhiệt độ trung bình tuần đang ở mức quá cao. Cần kiểm tra hệ thống làm mát hoặc phòng chống cháy nổ ngay lập tức.", 
+      text: "Cảnh báo rủi ro! Nhiệt độ trung bình đang ở mức quá cao. Cần kiểm tra hệ thống làm mát hoặc phòng chống cháy nổ ngay lập tức.", 
       color: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950/30", icon: <AlertTriangle className="w-5 h-5 text-rose-500" />
     }
     if (temp >= 31) return { 
@@ -129,14 +141,14 @@ export default function HistoryPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Lịch sử & Phân tích</h1>
           <p className="text-muted-foreground">
-            Báo cáo tự động về các thông số môi trường từ trạm cảm biến.
+            Báo cáo tự động về các thông số môi trường từ trạm cảm biến trong 14 ngày gần nhất.
           </p>
         </div>
 
         <div className={`p-4 rounded-xl border flex items-start gap-4 ${remark.bg} border-border/50 transition-colors`}>
           <div className="mt-0.5">{remark.icon}</div>
           <div>
-            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống tuần này</h3>
+            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống 14 ngày qua</h3>
             <p className="text-sm text-muted-foreground mt-1">{remark.text}</p>
           </div>
         </div>
@@ -169,7 +181,7 @@ export default function HistoryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-amber-500">{peakLight} lux</div>
-              <p className="text-xs text-muted-foreground mt-1">Mức sáng cao nhất tuần</p>
+              <p className="text-xs text-muted-foreground mt-1">Mức sáng cao nhất 14 ngày</p>
             </CardContent>
           </Card>
         </div>
@@ -177,7 +189,7 @@ export default function HistoryPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Biểu đồ biến thiên môi trường</CardTitle>
-            <CardDescription>Đường cong xu hướng của Nhiệt độ và Độ ẩm trong tuần</CardDescription>
+            <CardDescription>Đường cong xu hướng của Nhiệt độ và Độ ẩm trong 14 ngày qua</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[350px] w-full mt-4">
@@ -204,7 +216,6 @@ export default function HistoryPage() {
                     formatter={(value: number) => value === 0 ? ['Chưa có data', ''] : [value, '']}
                   />
                   
-                  {/* Sử dụng hàm connectNulls giả lập bằng cách chỉ vẽ đường khi giá trị > 0. Recharts mặc định sẽ vẽ về 0 nếu không cấu hình thêm, nhưng để đẹp mắt hơn ta vẫn giữ nguyên cấu trúc Area. */}
                   <Area type="monotone" dataKey="temp" name="Nhiệt độ (°C)" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorTemp)" activeDot={{ r: 6, strokeWidth: 0 }} />
                   <Area type="monotone" dataKey="humidity" name="Độ ẩm (%)" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorHum)" activeDot={{ r: 6, strokeWidth: 0 }} />
                 </AreaChart>
@@ -223,7 +234,7 @@ export default function HistoryPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/50 border-b border-border text-muted-foreground">
-                    <th className="text-left py-3 px-4 font-medium">Thứ trong tuần</th>
+                    <th className="text-left py-3 px-4 font-medium">Ngày/Tháng</th>
                     <th className="text-left py-3 px-4 font-medium">Nhiệt độ trung bình</th>
                     <th className="text-left py-3 px-4 font-medium">Độ ẩm trung bình</th>
                     <th className="text-left py-3 px-4 font-medium">Cường độ sáng</th>
