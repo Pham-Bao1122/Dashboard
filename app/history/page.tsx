@@ -31,6 +31,9 @@ export default function HistoryPage() {
   const [historyData, setHistoryData] = useState(generate14Days())
   const [mounted, setMounted] = useState(false)
 
+  // Lấy năm hiện tại để hiển thị trên giao diện
+  const currentYear = new Date().getFullYear()
+
   // ==========================================
   // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (CUỐN CHIẾU 14 NGÀY)
   // ==========================================
@@ -226,14 +229,17 @@ export default function HistoryPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Bản ghi chi tiết</CardTitle>
+            {/* Đã thêm NĂM HIỆN TẠI vào tiêu đề */}
+            <CardTitle>Bản ghi chi tiết (Năm {currentYear})</CardTitle>
             <CardDescription>Số liệu trung bình từng ngày được lưu trữ. Bạn có thể xóa dữ liệu nếu bị sai lệch.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-lg border border-border/50">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50 border-b border-border text-muted-foreground">
+            {/* Đã thêm khung giới hạn chiều cao max-h-[400px] và bật thanh trượt dọc overflow-y-auto */}
+            <div className="max-h-[400px] overflow-y-auto overflow-x-auto rounded-lg border border-border/50">
+              <table className="w-full text-sm relative">
+                {/* Đã ghim cố định hàng tiêu đề bảng bằng sticky top-0 */}
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-muted/95 backdrop-blur border-b border-border text-muted-foreground shadow-sm">
                     <th className="text-left py-3 px-4 font-medium">Ngày/Tháng</th>
                     <th className="text-left py-3 px-4 font-medium">Nhiệt độ trung bình</th>
                     <th className="text-left py-3 px-4 font-medium">Độ ẩm trung bình</th>
