@@ -10,13 +10,20 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
 // ==========================================
-// HÀM TẠO LỊCH SỬ 7 NGÀY KÈM DỮ LIỆU GIẢ LẬP (FAKE DATA)
+// HÀM TẠO LỊCH SỬ 14 NGÀY KÈM DỮ LIỆU GIẢ LẬP
 // ==========================================
-const generate7Days = () => {
+const generate14DaysWithFakeData = () => {
   const days = []
   
-  // Bộ số liệu giả lập thực tế cho 7 ngày để biểu đồ không bị trống
+  // Bộ số liệu giả lập cho 14 ngày (Từ cũ nhất đến mới nhất)
   const fakeData = [
+    { temp: 28.5, hum: 78, light: 250 }, // 13 ngày trước
+    { temp: 29.0, hum: 76, light: 280 }, // 12 ngày trước
+    { temp: 29.2, hum: 74, light: 300 }, // 11 ngày trước
+    { temp: 30.1, hum: 70, light: 420 }, // 10 ngày trước
+    { temp: 31.0, hum: 68, light: 500 }, // 9 ngày trước
+    { temp: 31.5, hum: 65, light: 550 }, // 8 ngày trước
+    { temp: 32.0, hum: 63, light: 600 }, // 7 ngày trước
     { temp: 29.5, hum: 75, light: 310 }, // 6 ngày trước
     { temp: 30.2, hum: 72, light: 450 }, // 5 ngày trước
     { temp: 31.8, hum: 65, light: 600 }, // 4 ngày trước
@@ -26,18 +33,18 @@ const generate7Days = () => {
     { temp: 30.0, hum: 69, light: 380 }, // Hôm nay (Dữ liệu mồi)
   ]
 
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 13; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
     const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
-    const fData = fakeData[6 - i]
+    const fData = fakeData[13 - i]
 
     days.push({ 
       date: dateStr, 
       temp: fData.temp, 
       humidity: fData.hum, 
       light: fData.light, 
-      count: 5 // Giả sử đã có 5 lần đo để khi số thật vào sẽ tính trung bình mượt mà
+      count: 5 // Mồi sẵn count = 5 để chia trung bình mượt mà khi có số thật
     })
   }
   return days
@@ -46,51 +53,46 @@ const generate7Days = () => {
 export default function HistoryPage() {
   const { data } = useFirebaseData()
   
-  // Khởi tạo state bằng khuôn 7 ngày kèm dữ liệu giả
-  const [historyData, setHistoryData] = useState(generate7Days())
+  // Khởi tạo state bằng khuôn 14 ngày
+  const [historyData, setHistoryData] = useState(generate14DaysWithFakeData())
   const [mounted, setMounted] = useState(false)
 
-  // Lấy năm hiện tại để hiển thị trên giao diện
   const currentYear = new Date().getFullYear()
 
   // ==========================================
-  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (CUỐN CHIẾU 7 NGÀY)
+  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (CUỐN CHIẾU 14 NGÀY)
   // ==========================================
   useEffect(() => {
-    // 1. Kéo dữ liệu cũ từ LocalStorage lên (Đổi key thành v4 để xóa dữ liệu rỗng cũ)
-    const savedHistory = localStorage.getItem('iot_7days_history_v4')
+    // Đổi key LocalStorage để nạp bộ khung 14 ngày mới tinh
+    const savedHistory = localStorage.getItem('iot_history_mixed_v5')
     const parsedSaved = savedHistory ? JSON.parse(savedHistory) : []
 
-    // 2. Tạo khung 7 ngày của thời điểm hiện tại
-    let current7Days = generate7Days()
+    let current14Days = generate14DaysWithFakeData()
 
-    // 3. Lắp ghép dữ liệu: Bê dữ liệu cũ đắp vào khung mới (nếu trùng ngày)
-    current7Days = current7Days.map(templateDay => {
+    // Bê dữ liệu cũ đắp vào khung mới (nếu trùng ngày)
+    current14Days = current14Days.map(templateDay => {
       const foundOldData = parsedSaved.find((old: any) => old.date === templateDay.date)
       return foundOldData ? foundOldData : templateDay
     })
 
-    // Lấy ngày hôm nay để cập nhật số liệu mới nhất
     const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
 
-    // 4. Lấy dữ liệu thật từ Firebase cộng dồn vào hôm nay
     if (data && data.NODES) {
       const firstNodeId = Object.keys(data.NODES)[0]
       const sensorData = data.NODES[firstNodeId]
 
       if (sensorData && sensorData.TEMP != null) {
-        const todayIndex = current7Days.findIndex((item: any) => item.date === todayStr)
+        const todayIndex = current14Days.findIndex((item: any) => item.date === todayStr)
         
         if (todayIndex !== -1) {
-          const currentDay = current7Days[todayIndex]
+          const currentDay = current14Days[todayIndex]
           
-          // Tính trung bình cộng dồn: Khi mạch bật, số thật sẽ hòa vào số giả
           const newCount = (currentDay.count || 0) + 1
           const newTemp = ((currentDay.temp * (newCount - 1)) + sensorData.TEMP) / newCount
           const newHum = ((currentDay.humidity * (newCount - 1)) + sensorData.HUM) / newCount
           const newLight = ((currentDay.light * (newCount - 1)) + sensorData.LIGHT) / newCount
 
-          current7Days[todayIndex] = {
+          current14Days[todayIndex] = {
             date: todayStr,
             temp: Number(newTemp.toFixed(1)),
             humidity: Number(newHum.toFixed(1)),
@@ -101,15 +103,11 @@ export default function HistoryPage() {
       }
     }
     
-    // Lưu ngược lại vào State và LocalStorage
-    setHistoryData([...current7Days])
-    localStorage.setItem('iot_7days_history_v4', JSON.stringify(current7Days))
+    setHistoryData([...current14Days])
+    localStorage.setItem('iot_history_mixed_v5', JSON.stringify(current14Days))
     setMounted(true)
   }, [data])
 
-  // ==========================================
-  // HÀM XÓA DỮ LIỆU CỦA 1 NGÀY
-  // ==========================================
   const clearDayData = (dateStr: string) => {
     const newHistory = historyData.map(day => {
       if (day.date === dateStr) {
@@ -118,13 +116,11 @@ export default function HistoryPage() {
       return day
     })
     setHistoryData(newHistory)
-    localStorage.setItem('iot_7days_history_v4', JSON.stringify(newHistory))
+    localStorage.setItem('iot_history_mixed_v5', JSON.stringify(newHistory))
     toast.success(`Đã xóa dữ liệu ngày ${dateStr}`)
   }
 
-  // ==========================================
-  // TÍNH TOÁN TRUNG BÌNH & NHẬN XÉT
-  // ==========================================
+  // Phân tích nhận xét cho 14 ngày
   const validDays = historyData.filter(d => d.temp > 0)
   
   const avgTemp = validDays.length ? (validDays.reduce((sum, d) => sum + d.temp, 0) / validDays.length).toFixed(1) : 0
@@ -154,6 +150,9 @@ export default function HistoryPage() {
 
   const remark = getRemark()
 
+  // Cắt lấy 7 ngày cuối cùng trong mảng 14 ngày để vẽ đồ thị
+  const chartData7Days = historyData.slice(-7)
+
   if (!mounted) return null
 
   return (
@@ -163,14 +162,14 @@ export default function HistoryPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Lịch sử & Phân tích</h1>
           <p className="text-muted-foreground">
-            Báo cáo tự động về các thông số môi trường từ trạm cảm biến trong 7 ngày gần nhất.
+            Báo cáo tổng hợp số liệu môi trường từ các trạm cảm biến.
           </p>
         </div>
 
         <div className={`p-4 rounded-xl border flex items-start gap-4 ${remark.bg} border-border/50 transition-colors`}>
           <div className="mt-0.5">{remark.icon}</div>
           <div>
-            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống 7 ngày qua</h3>
+            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống 14 ngày qua</h3>
             <p className="text-sm text-muted-foreground mt-1">{remark.text}</p>
           </div>
         </div>
@@ -203,7 +202,7 @@ export default function HistoryPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-amber-500">{peakLight} lux</div>
-              <p className="text-xs text-muted-foreground mt-1">Mức sáng cao nhất 7 ngày</p>
+              <p className="text-xs text-muted-foreground mt-1">Mức sáng cao nhất 14 ngày</p>
             </CardContent>
           </Card>
         </div>
@@ -211,12 +210,13 @@ export default function HistoryPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Biểu đồ biến thiên môi trường</CardTitle>
-            <CardDescription>Đường cong xu hướng của Nhiệt độ và Độ ẩm trong 7 ngày qua</CardDescription>
+            <CardDescription>Đường cong xu hướng của Nhiệt độ và Độ ẩm trong 7 ngày gần nhất</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[350px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={historyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                {/* Đã truyền mảng chartData7Days vào thay vì historyData */}
+                <AreaChart data={chartData7Days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
@@ -248,7 +248,7 @@ export default function HistoryPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Bản ghi chi tiết (Năm {currentYear})</CardTitle>
+            <CardTitle>Bản ghi chi tiết 14 ngày (Năm {currentYear})</CardTitle>
             <CardDescription>Số liệu trung bình từng ngày được lưu trữ. Bạn có thể xóa dữ liệu nếu bị sai lệch.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -264,6 +264,7 @@ export default function HistoryPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Bảng vẫn render đủ 14 ngày từ mảng historyData gốc */}
                   {historyData.map((row, idx) => (
                     <tr key={idx} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="py-3 px-4 font-medium">{row.date}</td>
