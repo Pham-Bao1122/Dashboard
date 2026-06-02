@@ -15,22 +15,22 @@ import { Button } from '@/components/ui/button'
 const generate14DaysWithFakeData = () => {
   const days = []
   
-  // Bộ số liệu giả lập cho 14 ngày (Từ cũ nhất đến mới nhất)
+  // Bộ số liệu giả lập cho 14 ngày (Ánh sáng 80-140 lux, độ ẩm có số thập phân)
   const fakeData = [
-    { temp: 28.5, hum: 78, light: 250 }, // 13 ngày trước
-    { temp: 29.0, hum: 76, light: 280 }, // 12 ngày trước
-    { temp: 29.2, hum: 74, light: 300 }, // 11 ngày trước
-    { temp: 30.1, hum: 70, light: 420 }, // 10 ngày trước
-    { temp: 31.0, hum: 68, light: 500 }, // 9 ngày trước
-    { temp: 31.5, hum: 65, light: 550 }, // 8 ngày trước
-    { temp: 32.0, hum: 63, light: 600 }, // 7 ngày trước
-    { temp: 29.5, hum: 75, light: 310 }, // 6 ngày trước
-    { temp: 30.2, hum: 72, light: 450 }, // 5 ngày trước
-    { temp: 31.8, hum: 65, light: 600 }, // 4 ngày trước
-    { temp: 32.1, hum: 62, light: 750 }, // 3 ngày trước
-    { temp: 30.5, hum: 68, light: 420 }, // 2 ngày trước
-    { temp: 29.8, hum: 70, light: 350 }, // Hôm qua
-    { temp: 30.0, hum: 69, light: 380 }, // Hôm nay (Dữ liệu mồi)
+    { temp: 28.5, hum: 68.2, light: 85 },  // 13 ngày trước
+    { temp: 29.0, hum: 66.5, light: 92 },  // 12 ngày trước
+    { temp: 29.2, hum: 65.8, light: 110 }, // 11 ngày trước
+    { temp: 30.1, hum: 63.4, light: 125 }, // 10 ngày trước
+    { temp: 31.0, hum: 61.2, light: 135 }, // 9 ngày trước
+    { temp: 31.5, hum: 60.5, light: 140 }, // 8 ngày trước
+    { temp: 32.0, hum: 62.1, light: 130 }, // 7 ngày trước
+    { temp: 29.5, hum: 66.3, light: 105 }, // 6 ngày trước
+    { temp: 30.2, hum: 64.7, light: 115 }, // 5 ngày trước
+    { temp: 31.8, hum: 61.9, light: 128 }, // 4 ngày trước
+    { temp: 32.1, hum: 60.1, light: 138 }, // 3 ngày trước
+    { temp: 30.5, hum: 65.2, light: 120 }, // 2 ngày trước
+    { temp: 29.8, hum: 67.8, light: 95 },  // Hôm qua
+    { temp: 30.0, hum: 66.9, light: 100 }, // Hôm nay (Dữ liệu mồi)
   ]
 
   for (let i = 13; i >= 0; i--) {
@@ -63,8 +63,8 @@ export default function HistoryPage() {
   // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (CUỐN CHIẾU 14 NGÀY)
   // ==========================================
   useEffect(() => {
-    // Đổi key LocalStorage để nạp bộ khung 14 ngày mới tinh
-    const savedHistory = localStorage.getItem('iot_history_mixed_v5')
+    // Đổi key LocalStorage sang v6 để nạp bộ số liệu giả mới
+    const savedHistory = localStorage.getItem('iot_history_mixed_v6')
     const parsedSaved = savedHistory ? JSON.parse(savedHistory) : []
 
     let current14Days = generate14DaysWithFakeData()
@@ -104,7 +104,7 @@ export default function HistoryPage() {
     }
     
     setHistoryData([...current14Days])
-    localStorage.setItem('iot_history_mixed_v5', JSON.stringify(current14Days))
+    localStorage.setItem('iot_history_mixed_v6', JSON.stringify(current14Days))
     setMounted(true)
   }, [data])
 
@@ -116,7 +116,7 @@ export default function HistoryPage() {
       return day
     })
     setHistoryData(newHistory)
-    localStorage.setItem('iot_history_mixed_v5', JSON.stringify(newHistory))
+    localStorage.setItem('iot_history_mixed_v6', JSON.stringify(newHistory))
     toast.success(`Đã xóa dữ liệu ngày ${dateStr}`)
   }
 
