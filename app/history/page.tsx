@@ -10,41 +10,22 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
 // ==========================================
-// HÀM TẠO LỊCH SỬ 14 NGÀY KÈM DỮ LIỆU GIẢ LẬP
+// HÀM TẠO LỊCH SỬ 14 NGÀY TRỐNG (KHÔNG CÓ FAKE DATA)
 // ==========================================
-const generate14DaysWithFakeData = () => {
+const generateEmpty14Days = () => {
   const days = []
   
-  // Bộ số liệu giả lập cho 14 ngày (Ánh sáng 80-140 lux, độ ẩm có số thập phân)
-  const fakeData = [
-    { temp: 28.5, hum: 68.2, light: 85 },  // 13 ngày trước
-    { temp: 29.0, hum: 66.5, light: 92 },  // 12 ngày trước
-    { temp: 29.2, hum: 65.8, light: 110 }, // 11 ngày trước
-    { temp: 30.1, hum: 63.4, light: 125 }, // 10 ngày trước
-    { temp: 31.0, hum: 61.2, light: 135 }, // 9 ngày trước
-    { temp: 31.5, hum: 60.5, light: 140 }, // 8 ngày trước
-    { temp: 32.0, hum: 62.1, light: 130 }, // 7 ngày trước
-    { temp: 29.5, hum: 66.3, light: 105 }, // 6 ngày trước
-    { temp: 30.2, hum: 64.7, light: 115 }, // 5 ngày trước
-    { temp: 31.8, hum: 61.9, light: 128 }, // 4 ngày trước
-    { temp: 32.1, hum: 60.1, light: 138 }, // 3 ngày trước
-    { temp: 30.5, hum: 65.2, light: 120 }, // 2 ngày trước
-    { temp: 29.8, hum: 67.8, light: 95 },  // Hôm qua
-    { temp: 30.0, hum: 66.9, light: 100 }, // Hôm nay (Dữ liệu mồi)
-  ]
-
   for (let i = 13; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
     const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
-    const fData = fakeData[13 - i]
 
     days.push({ 
       date: dateStr, 
-      temp: fData.temp, 
-      humidity: fData.hum, 
-      light: fData.light, 
-      count: 5 // Mồi sẵn count = 5 để chia trung bình mượt mà khi có số thật
+      temp: 0, 
+      humidity: 0, 
+      light: 0, 
+      count: 0
     })
   }
   return days
@@ -53,8 +34,8 @@ const generate14DaysWithFakeData = () => {
 export default function HistoryPage() {
   const { data } = useFirebaseData()
   
-  // Khởi tạo state bằng khuôn 14 ngày
-  const [historyData, setHistoryData] = useState(generate14DaysWithFakeData())
+  // Khởi tạo state bằng khuôn 14 ngày trống
+  const [historyData, setHistoryData] = useState(generateEmpty14Days())
   const [mounted, setMounted] = useState(false)
 
   const currentYear = new Date().getFullYear()
@@ -63,11 +44,11 @@ export default function HistoryPage() {
   // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (CUỐN CHIẾU 14 NGÀY)
   // ==========================================
   useEffect(() => {
-    // Đổi key LocalStorage sang v6 để nạp bộ số liệu giả mới
-    const savedHistory = localStorage.getItem('iot_history_mixed_v6')
+    // Đổi key LocalStorage sang 'real_v1' để làm sạch dữ liệu giả cũ
+    const savedHistory = localStorage.getItem('iot_history_real_v1')
     const parsedSaved = savedHistory ? JSON.parse(savedHistory) : []
 
-    let current14Days = generate14DaysWithFakeData()
+    let current14Days = generateEmpty14Days()
 
     // Bê dữ liệu cũ đắp vào khung mới (nếu trùng ngày)
     current14Days = current14Days.map(templateDay => {
@@ -104,7 +85,7 @@ export default function HistoryPage() {
     }
     
     setHistoryData([...current14Days])
-    localStorage.setItem('iot_history_mixed_v6', JSON.stringify(current14Days))
+    localStorage.setItem('iot_history_real_v1', JSON.stringify(current14Days))
     setMounted(true)
   }, [data])
 
@@ -116,7 +97,7 @@ export default function HistoryPage() {
       return day
     })
     setHistoryData(newHistory)
-    localStorage.setItem('iot_history_mixed_v6', JSON.stringify(newHistory))
+    localStorage.setItem('iot_history_real_v1', JSON.stringify(newHistory))
     toast.success(`Đã xóa dữ liệu ngày ${dateStr}`)
   }
 
@@ -215,7 +196,6 @@ export default function HistoryPage() {
           <CardContent>
             <div className="h-[350px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                {/* Đã truyền mảng chartData7Days vào thay vì historyData */}
                 <AreaChart data={chartData7Days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
@@ -264,7 +244,6 @@ export default function HistoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Bảng vẫn render đủ 14 ngày từ mảng historyData gốc */}
                   {historyData.map((row, idx) => (
                     <tr key={idx} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="py-3 px-4 font-medium">{row.date}</td>
