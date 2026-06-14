@@ -52,7 +52,8 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           {children}
-          <Toaster position="top-right" />
+          {/* ĐÃ THÊM THUỘC TÍNH closeButton VÀO ĐÂY */}
+          <Toaster position="top-right" closeButton />
         </ThemeProvider>
         <Analytics />
       </body>
