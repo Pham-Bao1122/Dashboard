@@ -14,6 +14,15 @@ interface LayoutWrapperProps {
 
 const ALERT_COOLDOWN = 10000; 
 
+// =========================================================================
+// BAN ĐỒ ĐỊNH VỊ VỊ TRÍ TRẠM (Huynh đệ thay đổi tên Phòng/Tầng của các trạm ở đây)
+// =========================================================================
+const HARDCODED_LOCATIONS: Record<string, { room: string; floor: string }> = {
+  "AHZ1": { room: "Phòng Khách", floor: "Tầng 1" },
+  "BHZ2": { room: "Phòng Nghiên Cứu", floor: "Tầng 2" },
+  // Huynh đệ có thêm trạm nào khác thì cứ add thêm dòng vào đây theo mẫu trên nhé
+};
+
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
@@ -66,11 +75,13 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       const now = Date.now();
       const lastAlert = lastAlertTime.current[nodeId] || 0;
 
-      // ==========================================
-      // XỬ LÝ TRÍCH XUẤT PHÒNG VÀ TẦNG TỪ FIREBASE
-      // ==========================================
-      const roomName = nodeData.ROOM || nodeData.room || '';
-      const floorName = nodeData.FLOOR || nodeData.floor || '';
+      // =======================================================================
+      // CƠ CHẾ QUÉT THÔNG MINH: ƯU TIÊN CLOUD -> BACKUP BẰNG HARDCODED TRONG CODE
+      // =======================================================================
+      const staticLoc = HARDCODED_LOCATIONS[nodeId] || { room: '', floor: '' };
+      
+      const roomName = nodeData.ROOM || nodeData.room || staticLoc.room || '';
+      const floorName = nodeData.FLOOR || nodeData.floor || staticLoc.floor || '';
       
       // Tạo chuỗi định vị vị trí trực quan
       const locationText = roomName && floorName 
