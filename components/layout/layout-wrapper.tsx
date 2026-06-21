@@ -15,12 +15,11 @@ interface LayoutWrapperProps {
 const ALERT_COOLDOWN = 10000; 
 
 // =========================================================================
-// BAN ĐỒ ĐỊNH VỊ VỊ TRÍ TRẠM (Huynh đệ thay đổi tên Phòng/Tầng của các trạm ở đây)
+// BAN ĐỒ ĐỊNH VỊ VỊ TRÍ TRẠM
 // =========================================================================
 const HARDCODED_LOCATIONS: Record<string, { room: string; floor: string }> = {
   "AHZ1": { room: "Phòng Khách", floor: "Tầng 1" },
   "BHZ2": { room: "Phòng Nghiên Cứu", floor: "Tầng 2" },
-  // Huynh đệ có thêm trạm nào khác thì cứ add thêm dòng vào đây theo mẫu trên nhé
 };
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
@@ -83,10 +82,10 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       const roomName = nodeData.ROOM || nodeData.room || staticLoc.room || '';
       const floorName = nodeData.FLOOR || nodeData.floor || staticLoc.floor || '';
       
-      // Tạo chuỗi định vị vị trí trực quan
+      // ĐÃ SỬA: Tạo chuỗi định vị chỉ giữ lại Phòng và Tầng
       const locationText = roomName && floorName 
-        ? `${roomName} - ${floorName} (Trạm ${nodeId})` 
-        : `trạm ${nodeId}`;
+        ? `${roomName} - ${floorName}` 
+        : `Khu vực`;
 
       let alertMsg = '';
       let alertType = 'info';
@@ -175,7 +174,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
         />
       )}
 
-      {/* 2. KHUNG TRƯỢT MENU BÊN TRÁI (Trượt ra khi isSidebarOpen = true) */}
+      {/* 2. KHUNG TRƯỢT MENU BÊN TRÁI */}
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="w-64 h-full bg-card shadow-xl md:shadow-none" onClick={() => setIsSidebarOpen(false)}>
           <Sidebar />
