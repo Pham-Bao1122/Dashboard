@@ -60,7 +60,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
     }
 
     Object.keys(data.NODES).forEach(async (nodeId) => {
-      const nodeData = data.NODES[nodeId];
+      const nodeData = data.NODES[nodeId] as any;
       const prevNodeData = previousData.current?.[nodeId] || {}; 
       
       const now = Date.now();
