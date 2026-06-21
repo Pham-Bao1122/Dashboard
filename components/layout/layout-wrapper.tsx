@@ -18,8 +18,8 @@ const ALERT_COOLDOWN = 10000;
 // BAN ĐỒ ĐỊNH VỊ VỊ TRÍ TRẠM
 // =========================================================================
 const HARDCODED_LOCATIONS: Record<string, { room: string; floor: string }> = {
-  "AHZ1": { room: "Phòng Khách", floor: "Tầng 1" },
-  "BHZ2": { room: "Phòng Nghiên Cứu", floor: "Tầng 2" },
+  "AHZ1": { room: "Phòng 1", floor: "Tầng 1" },
+  "BHZ2": { room: "Phòng 2", floor: "Tầng 1" },
 };
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
