@@ -66,24 +66,35 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       const now = Date.now();
       const lastAlert = lastAlertTime.current[nodeId] || 0;
 
+      // ==========================================
+      // XỬ LÝ TRÍCH XUẤT PHÒNG VÀ TẦNG TỪ FIREBASE
+      // ==========================================
+      const roomName = nodeData.ROOM || nodeData.room || '';
+      const floorName = nodeData.FLOOR || nodeData.floor || '';
+      
+      // Tạo chuỗi định vị vị trí trực quan
+      const locationText = roomName && floorName 
+        ? `${roomName} - ${floorName} (Trạm ${nodeId})` 
+        : `trạm ${nodeId}`;
+
       let alertMsg = '';
       let alertType = 'info';
       let alertTitle = 'Thông báo hệ thống';
 
       if (nodeData.TEMP > 40 && prevNodeData.TEMP <= 40) {
-        alertMsg = `🔥 NGUY HIỂM: Nhiệt độ tại trạm ${nodeId} đang rất cao (${nodeData.TEMP}°C)! Nguy cơ cháy nổ!`;
+        alertMsg = `🔥 NGUY HIỂM: Nhiệt độ tại ${locationText} đang rất cao (${nodeData.TEMP}°C)! Nguy cơ cháy nổ!`;
         alertType = 'danger';
         alertTitle = 'Cảnh báo Nhiệt độ';
       } else if (nodeData.DOOR === 1 && prevNodeData.DOOR === 0) {
-        alertMsg = `🚨 AN NINH: Phát hiện cửa mở trái phép tại trạm ${nodeId}!`;
+        alertMsg = `🚨 AN NINH: Phát hiện cửa mở trái phép tại ${locationText}!`;
         alertType = 'danger';
         alertTitle = 'Cảnh báo An ninh';
       } else if (nodeData.LIGHT > 800 && prevNodeData.LIGHT <= 800) { 
-        alertMsg = `☀️ CẢNH BÁO: Cường độ ánh sáng tại trạm ${nodeId} vượt ngưỡng (${nodeData.LIGHT} lux)!`;
+        alertMsg = `☀️ CẢNH BÁO: Cường độ ánh sáng tại ${locationText} vượt ngưỡng (${nodeData.LIGHT} lux)!`;
         alertType = 'warning';
         alertTitle = 'Cảnh báo Ánh sáng';
       } else if (nodeData.HUM > 80 && prevNodeData.HUM <= 80) {
-        alertMsg = `💧 CẢNH BÁO: Độ ẩm tại trạm ${nodeId} quá cao (${nodeData.HUM}%)!`;
+        alertMsg = `💧 CẢNH BÁO: Độ ẩm tại ${locationText} quá cao (${nodeData.HUM}%)!`;
         alertType = 'info';
         alertTitle = 'Cảnh báo Độ ẩm';
       }
@@ -163,7 +174,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       {/* 3. HEADER ĐƯỢC GẮN LỆNH MỞ MENU */}
       <Header onOpenSidebar={() => setIsSidebarOpen(true)} />
       
-      {/* 4. MAIN CONTENT: Không còn bị ép ml-64 trên điện thoại nữa */}
+      {/* 4. MAIN CONTENT */}
       <main className="ml-0 md:ml-64 mt-16 p-4 md:p-6 transition-all duration-300">
         {children}
       </main>
