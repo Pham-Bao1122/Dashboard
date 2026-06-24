@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
 // ==========================================
-// HÀM TẠO LỊCH SỬ 14 NGÀY TRỐNG SẠCH (KHÔNG CÓ FAKE DATA)
+// HÀM TẠO LỊCH SỬ 14 NGÀY TRỐNG SẠCH
 // ==========================================
 const generateEmpty14Days = () => {
   const days = []
@@ -39,14 +39,15 @@ export default function HistoryPage() {
   
   // BIẾN CỜ NGĂN CHẶN DỮ LIỆU TĨNH KHI BOARD TẮT
   const isInitialLoad = useRef(true)
+  const previousNodesStrRef = useRef("") // MỚI: Theo dõi biến thiên thực tế của cảm biến
 
   const currentYear = new Date().getFullYear()
 
   // ==========================================
-  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (CUỐN CHIẾU 14 NGÀY)
+  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (TÍNH TRUNG BÌNH ĐA TRẠM)
   // ==========================================
   useEffect(() => {
-    const savedHistory = localStorage.getItem('iot_history_mixed_v6')
+    const savedHistory = localStorage.getItem('iot_history_real_v1')
     const parsedSaved = savedHistory ? JSON.parse(savedHistory) : []
 
     let current14Days = generateEmpty14Days()
@@ -60,24 +61,50 @@ export default function HistoryPage() {
     const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
 
     if (data && data.NODES) {
-      // ĐÃ THAY ĐỔI: Nếu là lần đầu load trang, bỏ qua dữ liệu cũ đang tồn đọng trên Firebase Cloud
+      const nodesString = JSON.stringify(data.NODES)
+      
+      // Lần đầu load trang: Chụp lại trạng thái tĩnh hiện tại của Firebase và bỏ qua
       if (isInitialLoad.current) {
         isInitialLoad.current = false
-      } else {
-        // Đây là từ lần chạy thứ 2 trở đi -> Có dữ liệu biến thiên thay đổi (mạch thật đang gửi)
-        const firstNodeId = Object.keys(data.NODES)[0]
-        const sensorData = data.NODES[firstNodeId]
+        previousNodesStrRef.current = nodesString
+      } 
+      // Chỉ xử lý tính toán khi dữ liệu cảm biến THỰC SỰ BIẾN THIÊN (Board đang bật và gửi data)
+      else if (nodesString !== previousNodesStrRef.current) {
+        previousNodesStrRef.current = nodesString
 
-        if (sensorData && sensorData.TEMP != null) {
+        // 1. TIẾN HÀNH QUÉT VÀ TÍNH TRUNG BÌNH CỘNG TẤT CẢ CÁC TRẠM NODE ONLINE
+        const nodeIds = Object.keys(data.NODES)
+        let totalTemp = 0
+        let totalHum = 0
+        let totalLight = 0
+        let validNodesCount = 0
+
+        nodeIds.forEach(nodeId => {
+          const nodeSensor = data.NODES[nodeId] as any
+          // Chỉ tính các Node đang có dữ liệu hợp lệ
+          if (nodeSensor && nodeSensor.TEMP != null && nodeSensor.HUM != null) {
+            totalTemp += Number(nodeSensor.TEMP)
+            totalHum += Number(nodeSensor.HUM)
+            totalLight += Number(nodeSensor.LIGHT)
+            validNodesCount++
+          }
+        })
+
+        // 2. NẾU CÓ ÍT NHẤT 1 TRẠM HOẠT ĐỘNG THÌ ĐƯA VÀO CỘNG DỒN LỊCH SỬ
+        if (validNodesCount > 0) {
+          const currentAvgTemp = totalTemp / validNodesCount
+          const currentAvgHum = totalHum / validNodesCount
+          const currentAvgLight = totalLight / validNodesCount
+
           const todayIndex = current14Days.findIndex((item: any) => item.date === todayStr)
           
           if (todayIndex !== -1) {
             const currentDay = current14Days[todayIndex]
             
             const newCount = (currentDay.count || 0) + 1
-            const newTemp = ((currentDay.temp * (newCount - 1)) + sensorData.TEMP) / newCount
-            const newHum = ((currentDay.humidity * (newCount - 1)) + sensorData.HUM) / newCount
-            const newLight = ((currentDay.light * (newCount - 1)) + sensorData.LIGHT) / newCount
+            const newTemp = ((currentDay.temp * (newCount - 1)) + currentAvgTemp) / newCount
+            const newHum = ((currentDay.humidity * (newCount - 1)) + currentAvgHum) / newCount
+            const newLight = ((currentDay.light * (newCount - 1)) + currentAvgLight) / newCount
 
             current14Days[todayIndex] = {
               date: todayStr,
@@ -92,7 +119,7 @@ export default function HistoryPage() {
     }
     
     setHistoryData([...current14Days])
-    localStorage.setItem('iot_history_mixed_v6', JSON.stringify(current14Days))
+    localStorage.setItem('iot_history_real_v1', JSON.stringify(current14Days))
     setMounted(true)
   }, [data])
 
@@ -104,7 +131,7 @@ export default function HistoryPage() {
       return day
     })
     setHistoryData(newHistory)
-    localStorage.setItem('iot_history_mixed_v6', JSON.stringify(newHistory))
+    localStorage.setItem('iot_history_real_v1', JSON.stringify(newHistory))
     toast.success(`Đã xóa dữ liệu ngày ${dateStr}`)
   }
 
@@ -137,8 +164,6 @@ export default function HistoryPage() {
   }
 
   const remark = getRemark()
-
-  // Cắt lấy 7 ngày cuối cùng trong mảng 14 ngày để vẽ đồ thị
   const chartData7Days = historyData.slice(-7)
 
   if (!mounted) return null
@@ -150,7 +175,7 @@ export default function HistoryPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Lịch sử & Phân tích</h1>
           <p className="text-muted-foreground">
-            Báo cáo tổng hợp số liệu môi trường từ các trạm cảm biến.
+            Báo cáo tổng hợp số liệu môi trường trung bình từ tất cả các trạm cảm biến.
           </p>
         </div>
 
@@ -198,7 +223,7 @@ export default function HistoryPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Biểu đồ biến thiên môi trường</CardTitle>
-            <CardDescription>Đường cong xu hướng của Nhiệt độ và Độ ẩm trong 7 ngày gần nhất</CardDescription>
+            <CardDescription>Đường cong xu hướng trung bình của hệ thống trong 7 ngày gần nhất</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[350px] w-full mt-4">
@@ -236,7 +261,7 @@ export default function HistoryPage() {
         <Card>
           <CardHeader>
             <CardTitle>Bản ghi chi tiết 14 ngày (Năm {currentYear})</CardTitle>
-            <CardDescription>Số liệu trung bình từng ngày được lưu trữ. Bạn có thể xóa dữ liệu nếu bị sai lệch.</CardDescription>
+            <CardDescription>Số liệu trung bình tổng hợp từ hệ thống trạm. Bạn có thể xóa dữ liệu nếu bị sai lệch.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="max-h-[400px] overflow-y-auto overflow-x-auto rounded-lg border border-border/50">
