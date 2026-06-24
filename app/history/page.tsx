@@ -182,7 +182,7 @@ export default function HistoryPage() {
         <div className={`p-4 rounded-xl border flex items-start gap-4 ${remark.bg} border-border/50 transition-colors`}>
           <div className="mt-0.5">{remark.icon}</div>
           <div>
-            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống 14 ngày qua</h3>
+            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống trong ngày</h3>
             <p className="text-sm text-muted-foreground mt-1">{remark.text}</p>
           </div>
         </div>
