@@ -96,7 +96,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
         alertType = 'danger';
         alertTitle = 'Cảnh báo Nhiệt độ';
       } else if (nodeData.DOOR === 1 && prevNodeData.DOOR === 0) {
-        alertMsg = `🚨 AN NINH: Phát hiện cửa mở trái phép tại ${locationText}!`;
+        alertMsg = `🚨 AN NINH: Phát hiện cửa mở tại ${locationText}!`;
         alertType = 'danger';
         alertTitle = 'Cảnh báo An ninh';
       } else if (nodeData.LIGHT > 800 && prevNodeData.LIGHT <= 800) { 
