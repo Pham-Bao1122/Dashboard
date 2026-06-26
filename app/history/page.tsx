@@ -39,7 +39,7 @@ export default function HistoryPage() {
   
   // BIẾN CỜ NGĂN CHẶN DỮ LIỆU TĨNH KHI BOARD TẮT
   const isInitialLoad = useRef(true)
-  const previousNodesStrRef = useRef("") // MỚI: Theo dõi biến thiên thực tế của cảm biến
+  const previousSensorsStrRef = useRef("") // Quản lý nghiêm ngặt chỉ số cảm biến thật
 
   const currentYear = new Date().getFullYear()
 
@@ -61,16 +61,23 @@ export default function HistoryPage() {
     const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
 
     if (data && data.NODES) {
-      const nodesString = JSON.stringify(data.NODES)
+      // TRÍCH XUẤT CHUỖI SỐ LIỆU THÔ ĐỂ LOẠI BỎ TIMESTAMP/TRẠNG THÁI MẠNG ĐỔI MÀU GIAO DIỆN
+      let sensorsOnlyString = ""
+      Object.keys(data.NODES).forEach(id => {
+        const n = data.NODES[id] as any
+        if (n) {
+          sensorsOnlyString += `${id}:${n.TEMP}:${n.HUM}:${n.LIGHT}|`
+        }
+      })
       
-      // Lần đầu load trang: Chụp lại trạng thái tĩnh hiện tại của Firebase và bỏ qua
+      // Lần đầu load trang: Chụp lại thông số tĩnh trên Cloud và bỏ qua
       if (isInitialLoad.current) {
         isInitialLoad.current = false
-        previousNodesStrRef.current = nodesString
+        previousSensorsStrRef.current = sensorsOnlyString
       } 
-      // Chỉ xử lý tính toán khi dữ liệu cảm biến THỰC SỰ BIẾN THIÊN (Board đang bật và gửi data)
-      else if (nodesString !== previousNodesStrRef.current) {
-        previousNodesStrRef.current = nodesString
+      // CHỈ TÍNH TOÁN KHI THÔNG SỐ CẢM BIẾN THỰC SỰ NHẢY SỐ (BOARD ĐANG BẬT)
+      else if (sensorsOnlyString !== previousSensorsStrRef.current) {
+        previousSensorsStrRef.current = sensorsOnlyString
 
         // 1. TIẾN HÀNH QUÉT VÀ TÍNH TRUNG BÌNH CỘNG TẤT CẢ CÁC TRẠM NODE ONLINE
         const nodeIds = Object.keys(data.NODES)
@@ -81,7 +88,6 @@ export default function HistoryPage() {
 
         nodeIds.forEach(nodeId => {
           const nodeSensor = data.NODES[nodeId] as any
-          // Chỉ tính các Node đang có dữ liệu hợp lệ
           if (nodeSensor && nodeSensor.TEMP != null && nodeSensor.HUM != null) {
             totalTemp += Number(nodeSensor.TEMP)
             totalHum += Number(nodeSensor.HUM)
@@ -135,12 +141,14 @@ export default function HistoryPage() {
     toast.success(`Đã xóa dữ liệu ngày ${dateStr}`)
   }
 
-  // Phân tích nhận xét cho 14 ngày
+  // Phân tích nhận xét cho 14 ngày dựa trên các ngày có data
   const validDays = historyData.filter(d => d.temp > 0)
-  
-  const avgTemp = validDays.length ? (validDays.reduce((sum, d) => sum + d.temp, 0) / validDays.length).toFixed(1) : 0
-  const avgHum = validDays.length ? (validDays.reduce((sum, d) => sum + d.humidity, 0) / validDays.length).toFixed(1) : 0
-  const peakLight = validDays.length ? Math.max(...validDays.map(d => d.light)) : 0
+  const avgTempTotal = validDays.length ? (validDays.reduce((sum, d) => sum + d.temp, 0) / validDays.length).toFixed(1) : 0
+
+  // ĐỊNH VỊ DỮ LIỆU RIÊNG CHO NGÀY HÔM NAY ĐỂ HIỂN THỊ LÊN 3 THẺ TỔNG HỢP
+  const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+  const todayData = historyData.find(item => item.date === todayStr)
+  const isTodayActive = todayData && todayData.count > 0
 
   const getRemark = () => {
     if (validDays.length === 0) return {
@@ -148,7 +156,7 @@ export default function HistoryPage() {
       color: "text-muted-foreground", bg: "bg-muted/30", icon: <Info className="w-5 h-5 text-muted-foreground" />
     }
 
-    const temp = Number(avgTemp)
+    const temp = Number(avgTempTotal)
     if (temp >= 35) return { 
       text: "Cảnh báo rủi ro! Nhiệt độ trung bình đang ở mức quá cao. Cần kiểm tra hệ thống làm mát hoặc phòng chống cháy nổ ngay lập tức.", 
       color: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950/30", icon: <AlertTriangle className="w-5 h-5 text-rose-500" />
@@ -182,11 +190,14 @@ export default function HistoryPage() {
         <div className={`p-4 rounded-xl border flex items-start gap-4 ${remark.bg} border-border/50 transition-colors`}>
           <div className="mt-0.5">{remark.icon}</div>
           <div>
-            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống trong ngày</h3>
+            <h3 className={`font-semibold ${remark.color}`}>Đánh giá hệ thống 14 ngày qua</h3>
             <p className="text-sm text-muted-foreground mt-1">{remark.text}</p>
           </div>
         </div>
 
+        {/* =========================================================================
+            BỘ 3 THẺ TRUNG BÌNH CHỈ TÍNH RIÊNG TRONG 1 NGÀY HÔM NAY (XỬ LÝ CHỐNG STALE)
+            ========================================================================= */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-t-4 border-t-rose-500">
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
@@ -194,8 +205,10 @@ export default function HistoryPage() {
               <Thermometer className="h-4 w-4 text-rose-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-rose-500">{validDays.length ? `${avgTemp}°C` : '--'}</div>
-              <p className="text-xs text-muted-foreground mt-1">Ghi nhận trong {validDays.length} ngày qua</p>
+              <div className="text-3xl font-bold text-rose-500">{isTodayActive ? `${todayData.temp}°C` : '--'}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isTodayActive ? `Trung bình trạm hôm nay` : 'Thống kê hôm nay (Mạch offline)'}
+              </p>
             </CardContent>
           </Card>
           <Card className="border-t-4 border-t-blue-500">
@@ -204,18 +217,22 @@ export default function HistoryPage() {
               <Droplets className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-blue-500">{validDays.length ? `${avgHum}%` : '--'}</div>
-              <p className="text-xs text-muted-foreground mt-1">Ghi nhận trong {validDays.length} ngày qua</p>
+              <div className="text-3xl font-bold text-blue-500">{isTodayActive ? `${todayData.humidity}%` : '--'}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isTodayActive ? `Trung bình trạm hôm nay` : 'Thống kê hôm nay (Mạch offline)'}
+              </p>
             </CardContent>
           </Card>
           <Card className="border-t-4 border-t-amber-500">
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium">Đỉnh sáng cường độ</CardTitle>
+              <CardTitle className="text-sm font-medium">Cường độ ánh sáng</CardTitle>
               <Sun className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-amber-500">{validDays.length ? `${peakLight} lux` : '--'}</div>
-              <p className="text-xs text-muted-foreground mt-1">Mức sáng cao nhất 14 ngày</p>
+              <div className="text-3xl font-bold text-amber-500">{isTodayActive ? `${todayData.light} lux` : '--'}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isTodayActive ? `Trung bình trạm hôm nay` : 'Thống kê hôm nay (Mạch offline)'}
+              </p>
             </CardContent>
           </Card>
         </div>
