@@ -44,23 +44,33 @@ export default function HistoryPage() {
   const currentYear = new Date().getFullYear()
 
   // ==========================================
-  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (TÍNH TRUNG BÌNH ĐA TRẠM)
+  // LOGIC LƯU LỊCH SỬ THẬT TỪ FIREBASE (ĐỒNG BỘ ĐÁM MÂY)
   // ==========================================
   useEffect(() => {
-    const savedHistory = localStorage.getItem('iot_history_real_v1')
-    const parsedSaved = savedHistory ? JSON.parse(savedHistory) : []
+    const syncCloudHistory = async () => {
+      if (!data || !data.NODES) return
 
-    let current14Days = generateEmpty14Days()
+      // --- PHẦN 1: ĐỒNG BỘ HÓA ĐÁM MÂY (Thay thế LocalStorage) ---
+      let cloudHistory = []
+      try {
+        const res = await fetch('https://doantotnghiep-808e9-default-rtdb.firebaseio.com/history.json')
+        const resData = await res.json()
+        cloudHistory = resData ? resData : []
+      } catch (err) {
+        console.error("Lỗi lấy lịch sử từ Firebase:", err)
+      }
 
-    // Bê dữ liệu cũ từ LocalStorage đắp vào khung 14 ngày mới (nếu có)
-    current14Days = current14Days.map(templateDay => {
-      const foundOldData = parsedSaved.find((old: any) => old.date === templateDay.date)
-      return foundOldData ? foundOldData : templateDay
-    })
+      let current14Days = generateEmpty14Days()
 
-    const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+      // Bê dữ liệu cũ từ Cloud Firebase đắp vào khung 14 ngày mới (nếu có)
+      current14Days = current14Days.map(templateDay => {
+        const foundOldData = cloudHistory.find((old: any) => old.date === templateDay.date)
+        return foundOldData ? foundOldData : templateDay
+      })
+      // ------------------------------------------------------------
 
-    if (data && data.NODES) {
+      const todayStr = new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+
       // TRÍCH XUẤT CHUỖI SỐ LIỆU THÔ ĐỂ LOẠI BỎ TIMESTAMP/TRẠNG THÁI MẠNG ĐỔI MÀU GIAO DIỆN
       let sensorsOnlyString = ""
       Object.keys(data.NODES).forEach(id => {
@@ -74,6 +84,10 @@ export default function HistoryPage() {
       if (isInitialLoad.current) {
         isInitialLoad.current = false
         previousSensorsStrRef.current = sensorsOnlyString
+        // Cập nhật UI ngay lần đầu từ dữ liệu Cloud
+        setHistoryData([...current14Days])
+        setMounted(true)
+        return
       } 
       // CHỈ TÍNH TOÁN KHI THÔNG SỐ CẢM BIẾN THỰC SỰ NHẢY SỐ (BOARD ĐANG BẬT)
       else if (sensorsOnlyString !== previousSensorsStrRef.current) {
@@ -119,17 +133,29 @@ export default function HistoryPage() {
               light: Number(newLight.toFixed(0)),
               count: newCount
             }
+
+            // --- ĐỒNG BỘ LÊN ĐÁM MÂY (Thay thế LocalStorage) ---
+            try {
+              await fetch('https://doantotnghiep-808e9-default-rtdb.firebaseio.com/history.json', {
+                method: 'PUT',
+                body: JSON.stringify(current14Days)
+              })
+            } catch (err) {
+              console.error("Lỗi cập nhật lịch sử lên Firebase:", err)
+            }
+            // ----------------------------------------------------
           }
         }
       }
+
+      setHistoryData([...current14Days])
+      setMounted(true)
     }
-    
-    setHistoryData([...current14Days])
-    localStorage.setItem('iot_history_real_v1', JSON.stringify(current14Days))
-    setMounted(true)
+
+    syncCloudHistory()
   }, [data])
 
-  const clearDayData = (dateStr: string) => {
+  const clearDayData = async (dateStr: string) => {
     const newHistory = historyData.map(day => {
       if (day.date === dateStr) {
         return { date: day.date, temp: 0, humidity: 0, light: 0, count: 0 }
@@ -137,8 +163,18 @@ export default function HistoryPage() {
       return day
     })
     setHistoryData(newHistory)
-    localStorage.setItem('iot_history_real_v1', JSON.stringify(newHistory))
-    toast.success(`Đã xóa dữ liệu ngày ${dateStr}`)
+    
+    // --- ĐỒNG BỘ XÓA LÊN ĐÁM MÂY ---
+    try {
+      await fetch('https://doantotnghiep-808e9-default-rtdb.firebaseio.com/history.json', {
+        method: 'PUT',
+        body: JSON.stringify(newHistory)
+      })
+      toast.success(`Đã xóa dữ liệu ngày ${dateStr} trên đám mây`)
+    } catch (err) {
+      toast.error("Lỗi đồng bộ Firebase khi xóa")
+    }
+    // -------------------------------
   }
 
   // Phân tích nhận xét cho 14 ngày dựa trên các ngày có data
@@ -183,7 +219,7 @@ export default function HistoryPage() {
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">Lịch sử & Phân tích</h1>
           <p className="text-muted-foreground">
-            Báo cáo tổng hợp số liệu môi trường trung bình từ tất cả các trạm cảm biến.
+            Báo cáo tổng hợp số liệu môi trường trung bình từ tất cả các trạm cảm biến (Đồng bộ đám mây).
           </p>
         </div>
 
@@ -195,9 +231,7 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {/* =========================================================================
-            BỘ 3 THẺ TRUNG BÌNH CHỈ TÍNH RIÊNG TRONG 1 NGÀY HÔM NAY (XỬ LÝ CHỐNG STALE)
-            ========================================================================= */}
+        {/* Bộ 3 thẻ tổng hợp */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-t-4 border-t-rose-500">
             <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
@@ -237,6 +271,7 @@ export default function HistoryPage() {
           </Card>
         </div>
 
+        {/* Biểu đồ biến thiên */}
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Biểu đồ biến thiên môi trường</CardTitle>
@@ -275,6 +310,7 @@ export default function HistoryPage() {
           </CardContent>
         </Card>
 
+        {/* Bản ghi chi tiết */}
         <Card>
           <CardHeader>
             <CardTitle>Bản ghi chi tiết 14 ngày (Năm {currentYear})</CardTitle>
